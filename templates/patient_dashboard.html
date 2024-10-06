@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard - EHMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&family=Signika:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="EHMS Logo" class="logo-light">
+                    <img src="{{ url_for('static', filename='images/logo-darkmode.png') }}" alt="EHMS Logo" class="logo-dark">
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li class="active"><a href="#overview"><i class="fas fa-home"></i> Overview</a></li>
+                <li><a href="#appointments"><i class="fas fa-calendar-alt"></i> Appointments</a></li>
+                <li><a href="#medical-records"><i class="fas fa-file-medical"></i> Medical Records</a></li>
+                <li><a href="#medications"><i class="fas fa-pills"></i> Medications</a></li>
+                <li><a href="#messages"><i class="fas fa-envelope"></i> Messages</a></li>
+                <li><a href="#settings" id="settingsLink"><i class="fas fa-cog"></i> Settings</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="theme-toggle">
+                    <input type="checkbox" id="theme-switch" class="theme-switch">
+                    <label for="theme-switch" class="switch-label">
+                        <i class="fas fa-sun"></i>
+                        <i class="fas fa-moon"></i>
+                    </label>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>Welcome, {{ user[1] }}!</h1>
+                <div class="user-info">
+                    <i class="fas fa-user-circle avatar"></i>
+                    <span>{{ user[1] }}</span>
+                </div>
+            </header>
+            
+            <section id="overview" class="dashboard-section">
+                <h2>Overview</h2>
+                <div class="cards-container">
+                    <div class="card">
+                        <i class="fas fa-heartbeat"></i>
+                        <h3>Next Appointment</h3>
+                        <p>15th May, 2023</p>
+                        <p>Dr. Smith - Cardiology</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-pills"></i>
+                        <h3>Medications</h3>
+                        <p>2 Active Prescriptions</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-notes-medical"></i>
+                        <h3>Recent Tests</h3>
+                        <p>Blood Work - 1st May, 2023</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-comment-medical"></i>
+                        <h3>Messages</h3>
+                        <p>2 Unread Messages</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="appointments" class="dashboard-section">
+                <h2>Upcoming Appointments</h2>
+                <table class="appointments-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Doctor</th>
+                            <th>Department</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>15th May, 2023</td>
+                            <td>10:00 AM</td>
+                            <td>Dr. Smith</td>
+                            <td>Cardiology</td>
+                            <td><button class="btn-reschedule">Reschedule</button></td>
+                        </tr>
+                        <tr>
+                            <td>22nd May, 2023</td>
+                            <td>2:30 PM</td>
+                            <td>Dr. Johnson</td>
+                            <td>Orthopedics</td>
+                            <td><button class="btn-reschedule">Reschedule</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button class="btn-schedule" id="scheduleButton">Schedule New Appointment</button>
+            </section>
+            
+            <section id="settings" class="settings-section" style="display: none;">
+                <h2>Account Settings</h2>
+                <p>Patient ID: <span id="patientId">{{ user[0] }}</span> (This cannot be changed)</p>
+                <form id="updateProfileForm">
+                    <div class="form-group">
+                        <label for="updateName">Full Name</label>
+                        <input type="text" id="updateName" name="name" value="{{ user[1] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateEmail">Email</label>
+                        <input type="email" id="updateEmail" name="email" value="{{ user[2] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updatePhone">Phone</label>
+                        <input type="tel" id="updatePhone" name="phone" value="{{ user[3] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateGender">Gender</label>
+                        <input type="text" id="updateGender" name="gender" value="{{ user[4] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateMedicalRecord">Medical Record</label>
+                        <textarea id="updateMedicalRecord" name="medical_record" rows="4">{{ user[5] }}</textarea>
+                    </div>
+                    <button type="submit">Update Profile</button>
+                </form>
+
+                <h3>Change Password</h3>
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password</label>
+                        <input type="password" id="currentPassword" name="current_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" id="newPassword" name="new_password" required>
+                    </div>
+                    <button type="submit">Change Password</button>
+                </form>
+
+                <h3>Update Profile Picture</h3>
+                <form id="updateProfilePicForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="profilePic">New Profile Picture</label>
+                        <input type="file" id="profilePic" name="profile_pic" accept="image/*" required>
+                    </div>
+                    <button type="submit">Update Picture</button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <div class="cursor-gif">
+        <img src="{{ url_for('static', filename='images/cur_hov.gif') }}" alt="Custom Cursor GIF">
+    </div>
+    <div class="cursor"></div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+</body>
+</html>

@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Review Doctor Applications</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 <body>
     <h1>Doctor Applications</h1>
-    <table border="1">
+    <table>
         <tr>
             <th>Name</th>
             <th>Email</th>
@@ -22,10 +23,11 @@
             <td>{{ app[2] }}</td>
             <td>{{ app[3] }}</td>
             <td>{{ app[4] }}</td>
-            <td>{{ app[6] * 100 }}%</td>
+            <td>{{ "%.2f"|format(app[6] * 100) }}%</td>
             <td>
                 <a href="{{ app[5] }}" target="_blank">View Resume</a>
-                <!-- Add approve/reject buttons here if needed -->
+                <a href="{{ url_for('approve_application', app_id=app[0]) }}" class="btn btn-success">Approve</a>
+                <a href="{{ url_for('reject_application', app_id=app[0]) }}" class="btn btn-danger">Reject</a>
             </td>
         </tr>
         {% endfor %}

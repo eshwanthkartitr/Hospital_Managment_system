@@ -1,5 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import psycopg2
 from psycopg2 import pool
 import spacy
@@ -7,10 +9,25 @@ import PyPDF2
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import os
+import redis
+import base64
+from datetime import datetime, timedelta
+from resume import review_resume
+from werkzeug.utils import secure_filename
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a real secret key
 app.config['UPLOAD_FOLDER'] = 'uploads'  # Ensure this folder exists
+
+# Redis Configuration
+app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
+
+# Initialize the session extension
+Session(app)
 
 # Load the English language model
 nlp = spacy.load("en_core_web_sm")
@@ -31,6 +48,14 @@ def get_db_connection():
 
 def release_db_connection(conn):
     db_pool.putconn(conn)
+
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'pdf'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file_pdf(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -74,9 +99,9 @@ def login():
             with conn.cursor() as cur:
                 cur.execute("SELECT * FROM patients WHERE name = %s", (patient_name,))
                 user = cur.fetchone()
-                print(check_password_hash(user[2], password))
                 
-                if user and check_password_hash(user[2], password):  # Assuming password is at index 3
+                if user and check_password_hash(user[4], password):  # Assuming password is at index 3
+                    session['user_id'] = user[0]  # Store user ID in session
                     flash('Logged in successfully!', 'success')
                     return jsonify({"message": "Login successful"}), 200
                 else:
@@ -92,8 +117,99 @@ def login():
 
 @app.route('/dashboard')
 def dashboard():
+    if 'user_id' not in session:
+        flash('Please log in to access the dashboard.', 'error')
+        return redirect(url_for('login'))
     
-    return "Dashboard - To be implemented"
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, email, phone, gender, medical_record, profile_pic FROM patients WHERE id = %s", (session['user_id'],))
+            user = cur.fetchone()
+            if user and user[6]:  # If profile_pic exists
+                profile_pic_base64 = base64.b64encode(user[6]).decode('utf-8')
+            else:
+                profile_pic_base64 = None
+        return render_template('patient_dashboard.html', user=user, profile_pic=profile_pic_base64)
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        flash('Error fetching user data', 'error')
+        return redirect(url_for('login'))
+    finally:
+        release_db_connection(conn)
+
+@app.route('/change_password', methods=['POST'])
+def change_password():
+    if 'user_id' not in session:
+        return jsonify({"message": "Please log in to change your password."}), 401
+
+    current_password = request.form['current_password']
+    new_password = request.form['new_password']
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT password FROM patients WHERE id = %s", (session['user_id'],))
+            stored_password = cur.fetchone()[0]
+
+            if check_password_hash(stored_password, current_password):
+                hashed_new_password = generate_password_hash(new_password)
+                cur.execute("UPDATE patients SET password = %s WHERE id = %s", (hashed_new_password, session['user_id']))
+                conn.commit()
+                flash('Password updated successfully!', 'success')
+                return jsonify({"message": "Password updated successfully"}), 200
+            else:
+                flash('Current password is incorrect.', 'error')
+                return jsonify({"message": "Current password is incorrect"}), 400
+    except psycopg2.Error as e:
+        conn.rollback()
+        print(f"Database error: {e}")
+        return jsonify({"message": "Password update failed. Please try again."}), 500
+    finally:
+        release_db_connection(conn)
+
+@app.route('/update_profile_pic', methods=['POST'])
+def update_profile_pic():
+    if 'user_id' not in session:
+        return jsonify({"message": "Please log in to update your profile picture."}), 401
+
+    if 'profile_pic' not in request.files:
+        return jsonify({"message": "No file part"}), 400
+    
+    file = request.files['profile_pic']
+    
+    if file.filename == '':
+        return jsonify({"message": "No selected file"}), 400
+    
+    if file and allowed_file(file.filename):
+        file_data = file.read()
+
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE patients SET profile_pic = %s WHERE id = %s", (psycopg2.Binary(file_data), session['user_id']))
+            conn.commit()
+            flash('Profile picture updated successfully!', 'success')
+            return jsonify({"message": "Profile picture updated successfully"}), 200
+        except psycopg2.Error as e:
+            conn.rollback()
+            print(f"Database error: {e}")
+            return jsonify({"message": "Profile picture update failed. Please try again."}), 500
+        finally:
+            release_db_connection(conn)
+    else:
+        return jsonify({"message": "File type not allowed"}), 400
+
+def allowed_file(filename):
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('login'))
 
 # Function to extract text from a PDF file
 def extract_text_from_pdf(pdf_path):
@@ -162,7 +278,6 @@ def apply():
             job_descriptions = {
                 "ENT": "Seeking an experienced ENT specialist with skills in diagnosis and treatment of ear, nose, and throat disorders.",
                 "Cardiology": "Looking for a cardiologist with expertise in heart disease diagnosis, ECG interpretation, and cardiac catheterization.",
-                # Add more specializations as needed
             }
 
             job_description = job_descriptions.get(specialization, "Generic medical professional with relevant experience")
@@ -210,6 +325,301 @@ def review_applications():
         return redirect(url_for('dashboard'))
     finally:
         release_db_connection(conn)
+
+@app.route('/update_profile', methods=['POST'])
+def update_profile():
+    if 'user_id' not in session:
+        return jsonify({"message": "Please log in to update your profile."}), 401
+
+    name = request.form['name']
+    email = request.form['email']
+    phone = request.form['phone']
+    gender = request.form['gender']
+    medical_record = request.form['medical_record']
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE patients 
+                SET name = %s, email = %s, phone = %s, gender = %s, medical_record = %s 
+                WHERE id = %s
+            """, (name, email, phone, gender, medical_record, session['user_id']))
+        conn.commit()
+        return jsonify({"message": "Profile updated successfully"}), 200
+    except psycopg2.Error as e:
+        conn.rollback()
+        print(f"Database error: {e}")
+        return jsonify({"message": "Profile update failed. Please try again."}), 500
+    finally:
+        release_db_connection(conn)
+
+@app.route('/get_available_doctors', methods=['GET'])
+def get_available_doctors():
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, specialization FROM doctors WHERE is_active = TRUE")
+            doctors = cur.fetchall()
+        return jsonify(doctors), 200
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"message": "Error fetching doctors"}), 500
+    finally:
+        release_db_connection(conn)
+
+@app.route('/get_available_slots', methods=['POST'])
+def get_available_slots():
+    doctor_id = request.json['doctor_id']
+    date = request.json['date']
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT time_slot FROM appointments 
+                WHERE doctor_id = %s AND appointment_date = %s
+            """, (doctor_id, date))
+            booked_slots = [row[0] for row in cur.fetchall()]
+            
+            all_slots = [f"{h:02d}:00" for h in range(9, 18)]  # 9 AM to 5 PM 
+            available_slots = [slot for slot in all_slots if slot not in booked_slots]
+            
+        return jsonify(available_slots), 200
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"message": "Error fetching available slots"}), 500
+    finally:
+        release_db_connection(conn)
+
+@app.route('/book_appointment', methods=['POST'])
+def book_appointment():
+    if 'user_id' not in session:
+        return jsonify({"message": "Please log in to book an appointment."}), 401
+
+    doctor_id = request.json['doctor_id']
+    date = request.json['date']
+    time_slot = request.json['time_slot']
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO appointments (patient_id, doctor_id, appointment_date, time_slot)
+                VALUES (%s, %s, %s, %s)
+            """, (session['user_id'], doctor_id, date, time_slot))
+        conn.commit()
+        return jsonify({"message": "Appointment booked successfully"}), 200
+    except psycopg2.Error as e:
+        conn.rollback()
+        print(f"Database error: {e}")
+        return jsonify({"message": "Appointment booking failed. Please try again."}), 500
+    finally:
+        release_db_connection(conn)
+
+@app.route('/get_user_appointments', methods=['GET'])
+def get_user_appointments():
+    if 'user_id' not in session:
+        return jsonify({"message": "Please log in to view appointments."}), 401
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.id, d.name, d.specialization, a.appointment_date, a.time_slot
+                FROM appointments a
+                JOIN doctors d ON a.doctor_id = d.id
+                WHERE a.patient_id = %s
+                ORDER BY a.appointment_date, a.time_slot
+            """, (session['user_id'],))
+            appointments = cur.fetchall()
+        return jsonify(appointments), 200
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"message": "Error fetching appointments"}), 500
+    finally:
+        release_db_connection(conn)
+
+@app.route('/doctor/apply', methods=['GET', 'POST'])
+def doctor_apply():
+    if request.method == 'POST':
+        name = request.form['name']
+        email = request.form['email']
+        specialization = request.form['specialization']
+        experience = request.form['experience']
+        
+        if 'resume' not in request.files:
+            flash('No file part', 'error')
+            return redirect(request.url)
+        
+        file = request.files['resume']
+        
+        if file.filename == '':
+            flash('No selected file', 'error')
+            return redirect(request.url)
+        
+        if file and allowed_file_pdf(file.filename):
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            
+            # Process the resume
+            job_description = f"Doctor specializing in {specialization} with {experience} years of experience"
+            similarity_score = review_resume(file_path, job_description)
+            
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO doctor_applications (name, email, specialization, experience, resume_path, similarity_score)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (name, email, specialization, experience, file_path, similarity_score))
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            flash('Application submitted successfully', 'success')
+            return redirect(url_for('index'))
+    
+    return render_template('doctor_apply.html')
+
+@app.route('/hr/review')
+def hr_review():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM doctor_applications WHERE status = 'pending'")
+    applications = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('hr_review.html', applications=applications)
+
+@app.route('/hr/approve/<int:app_id>')
+def approve_application(app_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Get application details
+    cur.execute("SELECT * FROM doctor_applications WHERE id = %s", (app_id,))
+    application = cur.fetchone()
+    
+    if application:
+        # Insert into doctors table
+        cur.execute("""
+            INSERT INTO doctors (name, email, specialization)
+            VALUES (%s, %s, %s)
+        """, (application[1], application[2], application[3]))
+        
+        # Update application status
+        cur.execute("UPDATE doctor_applications SET status = 'approved' WHERE id = %s", (app_id,))
+        
+        conn.commit()
+        
+        # Send approval email
+        send_approval_email(application[2])  # Implement this function
+        
+        flash('Application approved and doctor added to the system', 'success')
+    else:
+        flash('Application not found', 'error')
+    
+    cur.close()
+    conn.close()
+    return redirect(url_for('hr_review'))
+
+@app.route('/hr/reject/<int:app_id>')
+def reject_application(app_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # Get application details
+    cur.execute("SELECT * FROM doctor_applications WHERE id = %s", (app_id,))
+    application = cur.fetchone()
+    
+    if application:
+        # Update application status
+        cur.execute("UPDATE doctor_applications SET status = 'rejected' WHERE id = %s", (app_id,))
+        conn.commit()
+        
+        # Send rejection email
+        send_rejection_email(application[2])  # Implement this function
+        
+        flash('Application rejected', 'success')
+    else:
+        flash('Application not found', 'error')
+    
+    cur.close()
+    conn.close()
+    return redirect(url_for('hr_review'))
+
+# Implement email sending functions (you can use libraries like Flask-Mail)
+def send_approval_email(email):
+    # Implement email sending logic
+    pass
+
+def send_rejection_email(email):
+    # Implement email sending logic
+    pass
+
+# Add a route for doctor dashboard
+@app.route('/doctor/dashboard')
+def doctor_dashboard():
+    # Implement doctor dashboard logic
+    return render_template('doctor_dashboard.html')
+
+# Add a route for patient-doctor communication
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    sender_id = request.form['sender_id']
+    receiver_id = request.form['receiver_id']
+    message = request.form['message']
+    sender_type = request.form['sender_type']
+    receiver_type = 'doctor' if sender_type == 'patient' else 'patient'
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO notifications (user_id, user_type, message)
+        VALUES (%s, %s, %s)
+    """, (receiver_id, receiver_type, message))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    return jsonify({'status': 'success', 'message': 'Message sent'})
+
+@app.route('/get_notifications')
+def get_notifications():
+    user_id = request.args.get('user_id')
+    user_type = request.args.get('user_type')
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT * FROM notifications
+        WHERE user_id = %s AND user_type = %s
+        ORDER BY created_at DESC
+    """, (user_id, user_type))
+    notifications = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    return jsonify({'notifications': notifications})
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'your-email@gmail.com'
+app.config['MAIL_PASSWORD'] = 'your-email-password'
+
+mail = Mail(app)
+
+def send_approval_email(email):
+    msg = Message('Application Approved', sender='your-email@gmail.com', recipients=[email])
+    msg.body = "Congratulations! Your application to join our medical team has been approved."
+    mail.send(msg)
+
+def send_rejection_email(email):
+    msg = Message('Application Status Update', sender='your-email@gmail.com', recipients=[email])
+    msg.body = "Thank you for your interest in joining our medical team. Unfortunately, we have decided not to proceed with your application at this time."
+    mail.send(msg)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,0 +1,69 @@
+.settings-section {
+    padding: 20px;
+    background-color: var(--theme-light);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.settings-section h2 {
+    margin-bottom: 20px;
+    color: var(--text-dark);
+}
+
+.settings-section h3 {
+    margin-top: 30px;
+    margin-bottom: 15px;
+    color: var(--text-dark);
+}
+
+.settings-section form {
+    margin-bottom: 30px;
+}
+
+.settings-section .form-group {
+    margin-bottom: 15px;
+}
+
+.settings-section label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-default);
+}
+
+.settings-section input[type="text"],
+.settings-section input[type="email"],
+.settings-section input[type="tel"],
+.settings-section input[type="password"],
+.settings-section textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--body-color);
+    color: var(--text-default);
+}
+
+.settings-section button {
+    background-color: var(--primary-color);
+    color: var(--body-color);
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.settings-section button:hover {
+    opacity: 0.9;
+}
+
+#patientId {
+    font-weight: bold;
+    color: var(--text-dark);
+}
+
+.settings-section, #overview, #appointments {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
