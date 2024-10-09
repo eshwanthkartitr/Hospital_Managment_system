@@ -4,41 +4,102 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor Application - EHMS</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&family=Signika:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/doc_forms.css') }}">
 </head>
 <body>
-    <div class="form-container page-transition" role="main">
-        <div class="container" id="applicationForm" aria-hidden="false">
-            <div class="form-header">
-                <h1>Apply as a Doctor</h1>
-                <p class="subtitle">Join our medical team</p>
-            </div>
-            <div class="form-content">
-                <form action="{{ url_for('doctor_apply') }}" method="POST" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="name">Full Name</label>
-                        <input type="text" id="name" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="specialization">Specialization</label>
-                        <input type="text" id="specialization" name="specialization" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="experience">Years of Experience</label>
-                        <input type="number" id="experience" name="experience" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="resume">Upload Resume (PDF)</label>
+    <div class="form-container">
+        <div class="form-header">
+            <h1>Join Our Medical Team</h1>
+            <p class="subtitle">Apply as a Doctor Today! 📢💖</p>
+        </div>
+        <div class="form-content">
+            <form id="doctorApplicationForm" action="{{ url_for('doctor_apply') }}" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" required placeholder="Dr. John Doe">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required placeholder="doctor@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="specialization">Specialization</label>
+                    <input type="text" id="specialization" name="specialization" required placeholder="e.g., Cardiology">
+                </div>
+                <div class="form-group">
+                    <label for="experience">Years of Experience</label>
+                    <input type="number" id="experience" name="experience" required min="0" placeholder="5">
+                </div>
+                <div class="form-group">
+                    <label for="resume">Upload Resume (PDF)</label>
+                    <div class="resume-upload">
                         <input type="file" id="resume" name="resume" accept=".pdf" required>
+                        <span class="resume-upload-btn">Choose File</span>
                     </div>
-                    <button type="submit">Submit Application</button>
-                </form>
-            </div>
+                    <div class="file-name"></div>
+                </div>
+                <button type="submit" class="bounce custom-cursor">Submit Application</button>
+            </form>
         </div>
     </div>
+    <div id="submissionEffect" class="submission-effect" style="opacity: 0;">
+        <div class="effect-content">
+            <h2>Application Submitted!</h2>
+            <p>Your application is now under review.</p>
+            <div class="medal">
+                <img src="{{ url_for('static', filename='images/confetti_2.gif') }}" alt="Medal" />
+            </div>
+            <div class="confetti"></div>
+        </div>
+    </div>
+
+    <div class="cursor-gif">
+        <img src="{{ url_for('static', filename='images/sub_hov.gif') }}" alt="Custom Cursor GIF">
+    </div>
+    
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const submitButton = document.querySelector('.bounce.custom-cursor');
+            const cursorGif = document.querySelector('.cursor-gif');
+
+            // Show cursor GIF on button hover
+            submitButton.addEventListener('mouseenter', function(e) {
+                cursorGif.style.display = 'block';
+                moveCursor(e);
+                document.addEventListener('mousemove', moveCursor);
+            });
+
+            submitButton.addEventListener('mouseleave', function() {
+                cursorGif.style.display = 'none';
+                document.removeEventListener('mousemove', moveCursor);
+            });
+
+            function moveCursor(e) {
+                cursorGif.style.left = e.clientX + 'px';
+                cursorGif.style.top = e.clientY-50 + 'px';
+            }
+
+            // Handle form submission
+            document.getElementById('doctorApplicationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                // Simulate form validation and submission
+                setTimeout(function() {
+                    const submissionEffect = document.getElementById('submissionEffect');
+                    submissionEffect.style.display = 'flex';
+                    setTimeout(function() {
+                        submissionEffect.style.opacity = '1';
+                    }, 50);
+
+                    // Simulate actual form submission
+                    setTimeout(function() {
+                        alert('Application submitted successfully!');
+                        e.target.submit();
+                    }, 2000);
+                }, 1000);
+            });
+        });
+    </script>
 </body>
 </html>

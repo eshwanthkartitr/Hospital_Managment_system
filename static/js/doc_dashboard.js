@@ -22,3 +22,43 @@ document.addEventListener('DOMContentLoaded', function() {
     // Reload notifications every 30 seconds
     setInterval(loadNotifications, 30000);
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    const submitButton = document.querySelector('.bounce.custom-cursor');
+    const cursorGif = document.querySelector('.cursor-gif');
+    const submissionEffect = document.getElementById('submissionEffect');
+
+    // Show cursor GIF on button hover
+    submitButton.addEventListener('mouseenter', function(e) {
+        cursorGif.style.display = 'block';
+        moveCursor(e);
+        document.addEventListener('mousemove', moveCursor);
+    });
+
+    submitButton.addEventListener('mouseleave', function() {
+        cursorGif.style.display = 'none';
+        document.removeEventListener('mousemove', moveCursor);
+    });
+
+    function moveCursor(e) {
+        cursorGif.style.left = e.clientX + 'px';
+        cursorGif.style.top = e.clientY + 'px';
+    }
+
+    // Handle form submission
+    document.getElementById('doctorApplicationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        setTimeout(function() {
+            submissionEffect.style.display = 'flex';
+            setTimeout(function() {
+                submissionEffect.style.opacity = '1';
+            }, 50);
+
+            // Simulate actual form submission
+            setTimeout(function() {
+                alert('Application submitted successfully!');
+                e.target.submit();
+            }, 2000);
+        }, 1000);
+    });
+});

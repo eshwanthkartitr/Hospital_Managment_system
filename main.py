@@ -1,4 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask_admin import Admin, BaseView, expose
+from flask_admin import AdminIndexView
+from flask_admin.menu import MenuLink
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -13,12 +16,11 @@ import redis
 import base64
 from datetime import datetime, timedelta
 from resume import review_resume
-from werkzeug.utils import secure_filename
 from flask_mail import Mail, Message
 
+# Create the Flask application instance
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a real secret key
-app.config['UPLOAD_FOLDER'] = 'uploads'  # Ensure this folder exists
 
 # Redis Configuration
 app.config['SESSION_TYPE'] = 'redis'
@@ -100,8 +102,9 @@ def login():
                 cur.execute("SELECT * FROM patients WHERE name = %s", (patient_name,))
                 user = cur.fetchone()
                 
-                if user and check_password_hash(user[4], password):  # Assuming password is at index 3
+                if user and check_password_hash(user[4], password):  # Assuming password is at index 4
                     session['user_id'] = user[0]  # Store user ID in session
+                    session['name']=user[1]
                     flash('Logged in successfully!', 'success')
                     return jsonify({"message": "Login successful"}), 200
                 else:
@@ -126,7 +129,7 @@ def dashboard():
         with conn.cursor() as cur:
             cur.execute("SELECT id, name, email, phone, gender, medical_record, profile_pic FROM patients WHERE id = %s", (session['user_id'],))
             user = cur.fetchone()
-            if user and user[6]:  # If profile_pic exists
+            if user and user[6]:
                 profile_pic_base64 = base64.b64encode(user[6]).decode('utf-8')
             else:
                 profile_pic_base64 = None
@@ -284,6 +287,8 @@ def apply():
 
             similarity_score, top_words, missing_words = review_resume(resume_text, job_description)
 
+            similarity_score = float(similarity_score)
+
             conn = get_db_connection()
             try:
                 with conn.cursor() as cur:
@@ -313,6 +318,10 @@ def apply():
 
 @app.route('/admin/review_applications')
 def review_applications():
+    if not session.get('is_admin'):
+        flash('Access denied. Admins only.', 'error')
+        return redirect(url_for('login'))
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
@@ -465,98 +474,142 @@ def doctor_apply():
             
             # Process the resume
             job_description = f"Doctor specializing in {specialization} with {experience} years of experience"
-            similarity_score = review_resume(file_path, job_description)
+            similarity_score, top_words, missing_words = review_resume(file_path, job_description)
             
+            # Convert similarity_score to a standard Python float
+            similarity_score = float(similarity_score)
+
             conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO doctor_applications (name, email, specialization, experience, resume_path, similarity_score)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (name, email, specialization, experience, file_path, similarity_score))
-            conn.commit()
-            cur.close()
-            conn.close()
-            
-            flash('Application submitted successfully', 'success')
-            return redirect(url_for('index'))
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO doctor_applications (name, email, specialization, experience, resume_path, similarity_score, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'pending')
+                    """, (name, email, specialization, experience, file_path, similarity_score))
+                conn.commit()
+                flash('Application submitted successfully', 'success')
+                return redirect(url_for('application_tracker'))
+            except psycopg2.Error as e:
+                conn.rollback()
+                print(f"Database error: {e}")
+                return jsonify({"message": "Application submission failed. Please try again."}), 500
+            finally:
+                release_db_connection(conn)
     
     return render_template('doctor_apply.html')
 
-@app.route('/hr/review')
+@app.route('/application_tracker')
+def application_tracker():
+    if 'user_id' not in session:
+        flash('Please log in to view your applications.', 'error')
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, name, email, specialization, experience, resume_path, status
+                FROM doctor_applications
+                WHERE name = %s
+            """, (session['name'],))
+            applications = cur.fetchall()
+            print(applications)
+        return render_template('application_tracker.html', applications=applications)
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        flash('Error retrieving applications', 'error')
+        return redirect(url_for('doctor_dashboard'))
+    finally:
+        release_db_connection(conn)
+
+@app.route('/hr/review', methods=['GET', 'POST'])
 def hr_review():
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM doctor_applications WHERE status = 'pending'")
-    applications = cur.fetchall()
-    cur.close()
-    conn.close()
-    return render_template('hr_review.html', applications=applications)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, email, specialization, experience, resume_path FROM doctor_applications WHERE status = 'pending'")
+            applications = cur.fetchall()
 
-@app.route('/hr/approve/<int:app_id>')
+        if request.method == 'POST':
+            job_description = request.form['job_description']
+            application_id = request.form['application_id']
+            
+            # Get the selected application
+            selected_application = next((app for app in applications if app[0] == int(application_id)), None)
+            if selected_application:
+                resume_path = selected_application[5]
+                similarity_score, top_words, missing_words = review_resume(resume_path, job_description)
+
+                return render_template('hr_review.html', applications=applications, selected_application=selected_application, similarity_score=similarity_score, top_words=top_words, missing_words=missing_words)
+
+        return render_template('hr_review.html', applications=applications)
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        flash('Error retrieving applications', 'error')
+        return redirect(url_for('dashboard'))
+    finally:
+        release_db_connection(conn)
+
+@app.route('/hr/approve/<int:app_id>', methods=['POST'])
 def approve_application(app_id):
     conn = get_db_connection()
-    cur = conn.cursor()
-    
-    # Get application details
-    cur.execute("SELECT * FROM doctor_applications WHERE id = %s", (app_id,))
-    application = cur.fetchone()
-    
-    if application:
-        # Insert into doctors table
-        cur.execute("""
-            INSERT INTO doctors (name, email, specialization)
-            VALUES (%s, %s, %s)
-        """, (application[1], application[2], application[3]))
-        
-        # Update application status
-        cur.execute("UPDATE doctor_applications SET status = 'approved' WHERE id = %s", (app_id,))
-        
-        conn.commit()
-        
-        # Send approval email
-        send_approval_email(application[2])  # Implement this function
-        
-        flash('Application approved and doctor added to the system', 'success')
-    else:
-        flash('Application not found', 'error')
-    
-    cur.close()
-    conn.close()
+    try:
+        with conn.cursor() as cur:
+            # Get application details
+            cur.execute("SELECT * FROM doctor_applications WHERE id = %s", (app_id,))
+            application = cur.fetchone()
+            
+            if application:
+                # Insert into doctors table
+                cur.execute("""
+                    INSERT INTO doctors (name, email, specialization,"Tr@310305")
+                    VALUES (%s, %s, %s)
+                """, (application[1], application[2], application[3]))
+                
+                # Update application status
+                cur.execute("UPDATE doctor_applications SET status = 'accepted' WHERE id = %s", (app_id,))
+                conn.commit()
+                
+                # Send approval email
+                send_approval_email(application[2])
+                
+                flash('Application approved and doctor added to the system', 'success')
+            else:
+                flash('Application not found', 'error')
+    except psycopg2.Error as e:
+        conn.rollback()
+        flash('Error processing application', 'error')
+    finally:
+        release_db_connection(conn)
     return redirect(url_for('hr_review'))
 
-@app.route('/hr/reject/<int:app_id>')
+@app.route('/hr/reject/<int:app_id>', methods=['POST'])
 def reject_application(app_id):
     conn = get_db_connection()
-    cur = conn.cursor()
-    
-    # Get application details
-    cur.execute("SELECT * FROM doctor_applications WHERE id = %s", (app_id,))
-    application = cur.fetchone()
-    
-    if application:
-        # Update application status
-        cur.execute("UPDATE doctor_applications SET status = 'rejected' WHERE id = %s", (app_id,))
-        conn.commit()
-        
-        # Send rejection email
-        send_rejection_email(application[2])  # Implement this function
-        
-        flash('Application rejected', 'success')
-    else:
-        flash('Application not found', 'error')
-    
-    cur.close()
-    conn.close()
+    try:
+        with conn.cursor() as cur:
+            # Check if the application exists
+            cur.execute("SELECT email FROM doctor_applications WHERE id = %s", (app_id,))
+            application = cur.fetchone()
+            
+            if application:
+                # Update application status
+                cur.execute("UPDATE doctor_applications SET status = 'rejected' WHERE id = %s", (app_id,))
+                conn.commit()
+                
+                # Send rejection email
+                send_rejection_email(application[0])  # Use the email from the fetched application
+                
+                flash('Application rejected', 'success')
+            else:
+                flash('Application not found', 'error')
+    except psycopg2.Error as e:
+        conn.rollback()
+        print(f"Database error: {e}")
+        flash('Error processing application', 'error')
+    finally:
+        release_db_connection(conn)
     return redirect(url_for('hr_review'))
-
-# Implement email sending functions (you can use libraries like Flask-Mail)
-def send_approval_email(email):
-    # Implement email sending logic
-    pass
-
-def send_rejection_email(email):
-    # Implement email sending logic
-    pass
 
 # Add a route for doctor dashboard
 @app.route('/doctor/dashboard')
@@ -606,20 +659,69 @@ def get_notifications():
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'your-email@gmail.com'
-app.config['MAIL_PASSWORD'] = 'your-email-password'
+app.config['MAIL_USERNAME'] = 'eshwanthkartitr@gmail.com'
+app.config['MAIL_PASSWORD'] = 'Tr@310305'
 
 mail = Mail(app)
 
 def send_approval_email(email):
-    msg = Message('Application Approved', sender='your-email@gmail.com', recipients=[email])
+    msg = Message('Application Approved', sender='eshwanthkartitr@gmail.com', recipients=[email])
     msg.body = "Congratulations! Your application to join our medical team has been approved."
     mail.send(msg)
 
 def send_rejection_email(email):
-    msg = Message('Application Status Update', sender='your-email@gmail.com', recipients=[email])
-    msg.body = "Thank you for your interest in joining our medical team. Unfortunately, we have decided not to proceed with your application at this time."
+    msg = Message('Application Status Update', sender='eshwanthkartitr@gmail.com', recipients=[email])
+    msg.body = (
+        "Dear Applicant,\n\n"
+        "Thank you for your interest in joining our esteemed medical team. "
+        "After careful consideration, we regret to inform you that we will not be proceeding with your application at this time. "
+        "We appreciate the effort you put into your application and encourage you to apply again in the future.\n\n"
+        "Best regards,\n"
+        "The EHMS Team"
+    )
     mail.send(msg)
+    
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template('error.html', error=400), 400
+
+@app.route('/admin/remove_doctor/<int:doctor_id>', methods=['POST'])
+def remove_doctor(doctor_id):
+    if not session.get('is_admin'):
+        flash('Access denied. Admins only.', 'error')
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM doctors WHERE id = %s", (doctor_id,))
+        conn.commit()
+        flash('Doctor removed successfully.', 'success')
+    except psycopg2.Error as e:
+        conn.rollback()
+        flash('Error removing doctor.', 'error')
+    finally:
+        release_db_connection(conn)
+    return redirect(url_for('review_applications'))
+
+@app.route('/admin/remove_patient/<int:patient_id>', methods=['POST'])
+def remove_patient(patient_id):
+    if not session.get('is_admin'):
+        flash('Access denied. Admins only.', 'error')
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM patients WHERE id = %s", (patient_id,))
+        conn.commit()
+        flash('Patient removed successfully.', 'success')
+    except psycopg2.Error as e:
+        conn.rollback()
+        flash('Error removing patient.', 'error')
+    finally:
+        release_db_connection(conn)
+    return redirect(url_for('review_applications'))
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,36 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review Doctor Applications</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <title>HR Review - EHMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&family=Signika:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/hr.css') }}">
+    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
 </head>
 <body>
-    <h1>Doctor Applications</h1>
-    <table>
-        <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Specialization</th>
-            <th>Experience</th>
-            <th>Similarity Score</th>
-            <th>Actions</th>
-        </tr>
-        {% for app in applications %}
-        <tr>
-            <td>{{ app[1] }}</td>
-            <td>{{ app[2] }}</td>
-            <td>{{ app[3] }}</td>
-            <td>{{ app[4] }}</td>
-            <td>{{ "%.2f"|format(app[6] * 100) }}%</td>
-            <td>
-                <a href="{{ app[5] }}" target="_blank">View Resume</a>
-                <a href="{{ url_for('approve_application', app_id=app[0]) }}" class="btn btn-success">Approve</a>
-                <a href="{{ url_for('reject_application', app_id=app[0]) }}" class="btn btn-danger">Reject</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="EHMS Logo" class="logo-light">
+                    <img src="{{ url_for('static', filename='images/logo-darkmode.png') }}" alt="EHMS Logo" class="logo-dark">
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li class="active"><a href="#review"><i class="fas fa-user-md"></i> Review Applications</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="theme-toggle">
+                    <input type="checkbox" id="theme-switch" class="theme-switch">
+                    <label for="theme-switch" class="switch-label">
+                        <i class="fas fa-sun"></i>
+                        <i class="fas fa-moon"></i>
+                    </label>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </nav>
+        
+        <main class="main-content">
+            <header>
+                <h1>HR Review Panel</h1>
+            </header>
+            
+            <section id="review" class="dashboard-section">
+                <form method="POST">
+                    <label for="job_description">Enter Job Description:</label>
+                    <textarea name="job_description" id="job_description" rows="4" cols="50" required></textarea>
+                    
+                    <label for="application_id">Select Application:</label>
+                    <select name="application_id" id="application_id" required>
+                        {% for app in applications %}
+                            <option value="{{ app[0] }}">{{ app[1] }} - {{ app[3] }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <button type="submit">Review</button>
+                </form>
+
+                {% if selected_application %}
+                <div class="results-section">
+                    <h2>Review Results for {{ selected_application[1] }}</h2>
+                    <p>Similarity Score: {{ similarity_score * 100 }}%</p>
+                    <h3>Top Relevant Words:</h3>
+                    <ul>
+                        {% for word, importance in top_words %}
+                            <li>{{ word }}: {{ importance }}</li>
+                        {% endfor %}
+                    </ul>
+                    <h3>Missing Words:</h3>
+                    <ul>
+                        {% for word in missing_words %}
+                            <li>{{ word }}</li>
+                        {% endfor %}
+                    </ul>
+                    <a href="{{ url_for('static', filename=selected_application[5]) }}" target="_blank">View Resume</a>
+                    <form action="{{ url_for('approve_application', app_id=selected_application[0]) }}" method="post">
+                        <button type="submit">Accept</button>
+                    </form>
+                    <form action="{{ url_for('reject_application', app_id=selected_application[0]) }}" method="post">
+                        <button type="submit">Reject</button>
+                    </form>
+                </div>
+                {% endif %}
+            </section>
+            
+            {% for doctor in doctors %}
+                <div>
+                    <p>{{ doctor.name }} - {{ doctor.specialization }}</p>
+                    <form action="{{ url_for('remove_doctor', doctor_id=doctor.id) }}" method="post">
+                        <button type="submit">Remove Doctor</button>
+                    </form>
+                </div>
+            {% endfor %}
+
+            {% for patient in patients %}
+                <div>
+                    <p>{{ patient.name }} - {{ patient.email }}</p>
+                    <form action="{{ url_for('remove_patient', patient_id=patient.id) }}" method="post">
+                        <button type="submit">Remove Patient</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </main>
+    </div>
 </body>
 </html>

@@ -49,8 +49,6 @@ body {
   place-items: center;
   padding: 1rem;
   font-size: var(--font-size-base);
-  opacity: 0;
-  transition: opacity 0.5s ease;
 }
 
 body.loaded {
@@ -69,10 +67,9 @@ body.loaded {
 }
 
 .form-container {
-  width: 90%;
-  max-width: 350px; 
-  height: auto;
-  background: var(--theme-light);
+  width: 100%;
+  max-width: 400px;
+  background-color: var(--theme-light);
   border-radius: 8px;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -162,10 +159,10 @@ textarea:focus {
 button {
   width: 100%;
   padding: 0.75rem;
-  background: white;
-  color: black;
+  background-color: var(--primary-color);
+  color: var(--body-color);
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   font-family: inherit;
   font-size: 0.9375rem;
   font-weight: 600;
