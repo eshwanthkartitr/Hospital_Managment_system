@@ -562,9 +562,9 @@ def approve_application(app_id):
             if application:
                 # Insert into doctors table
                 cur.execute("""
-                    INSERT INTO doctors (name, email, specialization,"Tr@310305")
-                    VALUES (%s, %s, %s)
-                """, (application[1], application[2], application[3]))
+                    INSERT INTO doctors (name,specialty,email,password)
+                    VALUES (%s, %s, %s,%s)
+                """, (application[1], application[2], application[3],application[4]))
                 
                 # Update application status
                 cur.execute("UPDATE doctor_applications SET status = 'accepted' WHERE id = %s", (app_id,))
@@ -578,7 +578,8 @@ def approve_application(app_id):
                 flash('Application not found', 'error')
     except psycopg2.Error as e:
         conn.rollback()
-        flash('Error processing application', 'error')
+        print(f"Error updating application status: {e}")
+        flash('Error approving application', 'error')
     finally:
         release_db_connection(conn)
     return redirect(url_for('hr_review'))
@@ -660,7 +661,7 @@ app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'eshwanthkartitr@gmail.com'
-app.config['MAIL_PASSWORD'] = 'Tr@310305'
+app.config['MAIL_PASSWORD'] = 'jyxt iwfk aubt qdrg'
 
 mail = Mail(app)
 
