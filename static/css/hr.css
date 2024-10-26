@@ -589,3 +589,12 @@ tbody tr:hover {
     cursor: pointer;
     transition: background-color 0.3s ease;
 }
+
+.room{
+    background-color: var(--body-color);
+    border: var(--border-color) solid 1px; 
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+

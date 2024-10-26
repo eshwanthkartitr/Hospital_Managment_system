@@ -1,169 +1,625 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Patient Dashboard - EHMS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&family=Signika:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
-</head>
-<body>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&family=Signika:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/settings.css') }}"
+    />
+  </head>
+  <body>
     <div class="dashboard-container">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="EHMS Logo" class="logo-light">
-                    <img src="{{ url_for('static', filename='images/logo-darkmode.png') }}" alt="EHMS Logo" class="logo-dark">
-                </div>
-            </div>
-            <ul class="nav-links">
-                <li class="active"><a href="#overview"><i class="fas fa-home"></i> Overview</a></li>
-                <li><a href="#appointments"><i class="fas fa-calendar-alt"></i> Appointments</a></li>
-                <li><a href="#medical-records"><i class="fas fa-file-medical"></i> Medical Records</a></li>
-                <li><a href="#medications"><i class="fas fa-pills"></i> Medications</a></li>
-                <li><a href="#messages"><i class="fas fa-envelope"></i> Messages</a></li>
-                <li><a href="#settings" id="settingsLink"><i class="fas fa-cog"></i> Settings</a></li>
-            </ul>
-            <div class="sidebar-footer">
-                <div class="theme-toggle">
-                    <input type="checkbox" id="theme-switch" class="theme-switch">
-                    <label for="theme-switch" class="switch-label">
-                        <i class="fas fa-sun"></i>
-                        <i class="fas fa-moon"></i>
-                    </label>
-                </div>
-                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </nav>
-        
-        <main class="main-content">
-            <header>
-                <h1>Welcome, {{ user[1] }}!</h1>
-                <div class="user-info">
-                    <i class="fas fa-user-circle avatar"></i>
-                    <span>{{ user[1] }}</span>
-                </div>
-            </header>
-            
-            <section id="overview" class="dashboard-section">
-                <h2>Overview</h2>
-                <div class="cards-container">
-                    <div class="card">
-                        <i class="fas fa-heartbeat"></i>
-                        <h3>Next Appointment</h3>
-                        <p>15th May, 2023</p>
-                        <p>Dr. Smith - Cardiology</p>
-                    </div>
-                    <div class="card">
-                        <i class="fas fa-pills"></i>
-                        <h3>Medications</h3>
-                        <p>2 Active Prescriptions</p>
-                    </div>
-                    <div class="card">
-                        <i class="fas fa-notes-medical"></i>
-                        <h3>Recent Tests</h3>
-                        <p>Blood Work - 1st May, 2023</p>
-                    </div>
-                    <div class="card">
-                        <i class="fas fa-comment-medical"></i>
-                        <h3>Messages</h3>
-                        <p>2 Unread Messages</p>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="appointments" class="dashboard-section">
-                <h2>Upcoming Appointments</h2>
-                <table class="appointments-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>Doctor</th>
-                            <th>Department</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>15th May, 2023</td>
-                            <td>10:00 AM</td>
-                            <td>Dr. Smith</td>
-                            <td>Cardiology</td>
-                            <td><button class="btn-reschedule">Reschedule</button></td>
-                        </tr>
-                        <tr>
-                            <td>22nd May, 2023</td>
-                            <td>2:30 PM</td>
-                            <td>Dr. Johnson</td>
-                            <td>Orthopedics</td>
-                            <td><button class="btn-reschedule">Reschedule</button></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <button class="btn-schedule" id="scheduleButton">Schedule New Appointment</button>
-            </section>
-            
-            <section id="settings" class="settings-section" style="display: none;">
-                <h2>Account Settings</h2>
-                <p>Patient ID: <span id="patientId">{{ user[0] }}</span> (This cannot be changed)</p>
-                <form id="updateProfileForm">
-                    <div class="form-group">
-                        <label for="updateName">Full Name</label>
-                        <input type="text" id="updateName" name="name" value="{{ user[1] }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="updateEmail">Email</label>
-                        <input type="email" id="updateEmail" name="email" value="{{ user[2] }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="updatePhone">Phone</label>
-                        <input type="tel" id="updatePhone" name="phone" value="{{ user[3] }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="updateGender">Gender</label>
-                        <input type="text" id="updateGender" name="gender" value="{{ user[4] }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="updateMedicalRecord">Medical Record</label>
-                        <textarea id="updateMedicalRecord" name="medical_record" rows="4">{{ user[5] }}</textarea>
-                    </div>
-                    <button type="submit">Update Profile</button>
-                </form>
+      <nav class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <img
+              src="{{ url_for('static', filename='images/logo.png') }}"
+              alt="EHMS Logo"
+              class="logo-light"
+            />
+            <img
+              src="{{ url_for('static', filename='images/logo-darkmode.png') }}"
+              alt="EHMS Logo"
+              class="logo-dark"
+            />
+          </div>
+        </div>
+        <ul class="nav-links">
+          <li class="active">
+            <a href="#overview"><i class="fas fa-home"></i> Overview</a>
+          </li>
+          <li>
+            <a href="#appointments"
+              ><i class="fas fa-calendar-alt"></i> Appointments</a
+            >
+          </li>
+          <li>
+            <a href="#medical-records"
+              ><i class="fas fa-file-medical"></i> Medical Records</a
+            >
+          </li>
+          <li>
+            <a href="#medications"><i class="fas fa-pills"></i> Medications</a>
+          </li>
+          <li>
+            <a href="#messages" class="nav-link"
+              ><i class="fas fa-envelope"></i> Messages</a
+            >
+          </li>
+          <li>
+            <a href="#roomStatus" id="roomStatusLink"
+              ><i class="fa-solid fa-person-shelter"></i> Room Allocated</a
+            >
+          </li>
+          <li>
+            <a href="#settings" id="settingsLink"
+              ><i class="fas fa-cog"></i> Settings</a
+            >
+          </li>
+          
+        </ul>
+        <div class="sidebar-footer">
+          <div class="theme-toggle">
+            <input type="checkbox" id="theme-switch" class="theme-switch" />
+            <label for="theme-switch" class="switch-label">
+              <i class="fas fa-sun"></i>
+              <i class="fas fa-moon"></i>
+            </label>
+          </div>
+          <a href="{{ url_for('logout') }}" class="logout-btn"
+            ><i class="fas fa-sign-out-alt"></i> Logout</a
+          >
+        </div>
+      </nav>
 
-                <h3>Change Password</h3>
-                <form id="changePasswordForm">
-                    <div class="form-group">
-                        <label for="currentPassword">Current Password</label>
-                        <input type="password" id="currentPassword" name="current_password" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="newPassword">New Password</label>
-                        <input type="password" id="newPassword" name="new_password" required>
-                    </div>
-                    <button type="submit">Change Password</button>
-                </form>
+      <main class="main-content">
+        <header>
+          <h1>Welcome, {{ user[1] }}!</h1>
+          <div class="user-info">
+            <i class="fas fa-user-circle avatar"></i>
+            <span>{{ user[1] }}</span>
+          </div>
+        </header>
 
-                <h3>Update Profile Picture</h3>
-                <form id="updateProfilePicForm" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="profilePic">New Profile Picture</label>
-                        <input type="file" id="profilePic" name="profile_pic" accept="image/*" required>
-                    </div>
-                    <button type="submit">Update Picture</button>
-                </form>
-            </section>
-        </main>
+        <section id="overview" class="dashboard-section">
+          <h2>Overview</h2>
+          <div class="cards-container">
+            <div class="card">
+              <i class="fas fa-heartbeat"></i>
+              <h3>Next Appointment</h3>
+              <p>15th May, 2023</p>
+              <p>Dr. Smith - Cardiology</p>
+            </div>
+            <div class="card">
+              <i class="fas fa-pills"></i>
+              <h3>Medications</h3>
+              <p>2 Active Prescriptions</p>
+            </div>
+            <div class="card">
+              <i class="fas fa-notes-medical"></i>
+              <h3>Recent Tests</h3>
+              <p>Blood Work - 1st May, 2023</p>
+            </div>
+            <div class="card">
+              <i class="fas fa-comment-medical"></i>
+              <h3>Messages</h3>
+              <p>2 Unread Messages</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="appointments" class="dashboard-section">
+          <h2>Book an Appointment</h2>
+          <button id="scheduleButton" class="btn-schedule">
+            Schedule Appointment
+          </button>
+          <div id="scheduleModal" class="modal">
+            <div class="modal-content">
+              <span class="close">&times;</span>
+              <h2>Select a Doctor</h2>
+              <div id="doctorList"></div>
+              <input type="date" id="appointmentDate" />
+              <div id="slotsContainer"></div>
+              <button id="confirmAppointment" class="btn-schedule">
+                Confirm Appointment
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings" class="settings-section" style="display: none">
+          <h2>Account Settings</h2>
+          <p>
+            Patient ID: <span id="patientId">{{ user[0] }}</span> (This cannot
+            be changed)
+          </p>
+          <form id="updateProfileForm">
+            <div class="form-group">
+              <label for="updateName">Full Name</label>
+              <input
+                type="text"
+                id="updateName"
+                name="name"
+                value="{{ user[1] }}"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="updateEmail">Email</label>
+              <input
+                type="email"
+                id="updateEmail"
+                name="email"
+                value="{{ user[2] }}"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="updatePhone">Phone</label>
+              <input
+                type="tel"
+                id="updatePhone"
+                name="phone"
+                value="{{ user[3] }}"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="updateGender">Gender</label>
+              <input
+                type="text"
+                id="updateGender"
+                name="gender"
+                value="{{ user[4] }}"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="updateMedicalRecord">Medical Record</label>
+              <textarea id="updateMedicalRecord" name="medical_record" rows="4">
+{{ user[5] }}</textarea
+              >
+            </div>
+            <button type="submit">Update Profile</button>
+          </form>
+
+          <h3>Change Password</h3>
+          <form id="changePasswordForm">
+            <div class="form-group">
+              <label for="currentPassword">Current Password</label>
+              <input
+                type="password"
+                id="currentPassword"
+                name="current_password"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="newPassword">New Password</label>
+              <input
+                type="password"
+                id="newPassword"
+                name="new_password"
+                required
+              />
+            </div>
+            <button type="submit">Change Password</button>
+          </form>
+
+          <h3>Update Profile Picture</h3>
+          <form id="updateProfilePicForm" enctype="multipart/form-data">
+            <div class="form-group">
+              <label for="profilePic">New Profile Picture</label>
+              <input
+                type="file"
+                id="profilePic"
+                name="profile_pic"
+                accept="image/*"
+                required
+              />
+            </div>
+            <button type="submit">Update Picture</button>
+          </form>
+
+          <form id="broadcastForm">
+            <textarea
+              id="broadcastMessage"
+              placeholder="Enter your message"
+            ></textarea>
+            <button type="submit">Send to All Doctors</button>
+          </form>
+
+          <script>
+            document
+              .getElementById("broadcastForm")
+              .addEventListener("submit", function (e) {
+                e.preventDefault();
+                const message =
+                  document.getElementById("broadcastMessage").value;
+
+                fetch("/broadcast_message", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ message: message }),
+                })
+                  .then((response) => response.json())
+                  .then((data) => {
+                    alert(data.status);
+                  })
+                  .catch((error) => console.error("Error:", error));
+              });
+          </script>
+        </section>
+
+        <section id="myAppointments" class="dashboard-section">
+          <h2>My Appointments</h2>
+          <div id="appointmentsList"></div>
+        </section>
+
+        <section id="messages" class="dashboard-section" style="display: none">
+          <h2>Messages</h2>
+          <div class="chat-container">
+            <div class="chat-list" id="chatList">
+              <!-- Chat list will be populated here -->
+            </div>
+            <div class="chat-window">
+              <div class="chat-header" id="chatHeader">
+                <!-- Active chat partner's name will be displayed here -->
+              </div>
+              <div class="chat-messages" id="chatMessages">
+                <!-- Chat messages will be displayed here -->
+              </div>
+              <div class="chat-input">
+                <input
+                  type="text"
+                  id="messageInput"
+                  placeholder="Type your message..."
+                />
+                <button onclick="sendMessage()">Send</button>
+              </div>
+            </div>
+            </div>
+        </section>
+
+        <section id="roomStatus" class="dashboard-section" style="display: none;">
+            <h2>Room Allocation</h2>
+            <div id="roomStatusContent">
+                <!-- Room status will be dynamically updated here -->
+            </div>  
+        </section>
+      </main>
     </div>
 
-    <div class="cursor-gif">
-        <img src="{{ url_for('static', filename='images/cur_hov.gif') }}" alt="Custom Cursor GIF">
+    <div class="cursor-gif" style="display: none; position: absolute">
+      <img
+        src="{{ url_for('static', filename='images/cur_hov.gif') }}"
+        alt="Cursor GIF"
+      />
     </div>
     <div class="cursor"></div>
 
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
     <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
-</body>
+
+    <script>
+      function loadAvailableDoctors() {
+        fetch("/get_available_doctors")
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data);
+            const availableDoctors =
+              document.getElementById("availableDoctors");
+            availableDoctors.innerHTML = "";
+            data.forEach((doctor) => {
+              const doctorElement = document.createElement("div");
+              doctorElement.textContent = doctor[1];
+              availableDoctors.appendChild(doctorElement);
+            });
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      document.addEventListener("DOMContentLoaded", loadAvailableDoctors);
+    </script>
+
+    <div id="scheduleModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Select a Doctor</h2>
+        <div id="doctorList"></div>
+        <button id="confirmAppointment" class="btn-schedule">
+          Confirm Appointment
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const scheduleButton = document.getElementById("scheduleButton");
+      const myAppointments = document.getElementById("myAppointments");
+      scheduleButton.addEventListener("focus", function () {
+        myAppointments.style.display = "none";
+      });
+
+      document
+        .getElementById("scheduleButton")
+        .addEventListener("click", function () {
+          const modal = document.getElementById("scheduleModal");
+          modal.style.display = "block";
+
+          fetch("/get_available_doctors")
+            .then((response) => response.json())
+            .then((doctors) => {
+              const doctorList = document.getElementById("doctorList");
+              doctorList.innerHTML = "";
+              doctors.forEach((doctor) => {
+                const doctorElement = document.createElement("div");
+                doctorElement.textContent = `${doctor[1]} - ${doctor[2]}`;
+                doctorElement.dataset.id = doctor[0];
+                doctorElement.classList.add("doctor-item");
+                doctorElement.addEventListener("click", function () {
+                  document
+                    .querySelectorAll(".doctor-item")
+                    .forEach((item) => item.classList.remove("selected"));
+                  this.classList.add("selected");
+                });
+                doctorList.appendChild(doctorElement);
+              });
+            })
+            .catch((error) => console.error("Error fetching doctors:", error));
+        });
+
+      document
+        .getElementById("doctorList")
+        .addEventListener("click", function (e) {
+          if (e.target.classList.contains("doctor-item")) {
+            document
+              .querySelectorAll(".doctor-item")
+              .forEach((item) => item.classList.remove("selected"));
+            e.target.classList.add("selected");
+          }
+        });
+    </script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const sidebarLinks = document.querySelectorAll(".nav-links a");
+        const sections = document.querySelectorAll(".dashboard-section");
+
+        sidebarLinks.forEach((link) => {
+          link.addEventListener("click", function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute("href").substring(1);
+
+            sections.forEach((section) => {
+              section.style.display =
+                section.id === targetId ? "block" : "none";
+            });
+            console.log(targetId);
+            if (targetId === "appointments") {
+              document.getElementById("myAppointments").style.marginTop =
+                "20px";
+              document.getElementById("myAppointments").style.display = "block";
+              loadAppointments();
+            }
+          });
+        });
+
+        function loadAppointments() {
+          const appointmentsList = document.getElementById("appointmentsList");
+          if (!appointmentsList) {
+            console.error('Element with ID "appointmentsList" not found');
+            return;
+          }
+
+          fetch("/get_user_appointments")
+            .then((response) => response.json())
+            .then((appointments) => {
+              appointmentsList.innerHTML = ""; // Clear previous appointments
+
+              if (appointments.length === 0) {
+                appointmentsList.innerHTML =
+                  "<p>No appointments scheduled.</p>";
+                return;
+              }
+
+              appointments.forEach((appointment) => {
+                const appointmentElement = document.createElement("div");
+                appointmentElement.classList.add("appointment-item");
+                appointmentElement.classList.add(`status-${appointment.status}`);
+                appointmentElement.innerHTML = `
+                        <h4>${appointment.doctor_name} (${
+                  appointment.specialty
+                })</h4>
+                        <p>Date: ${new Date(
+                          appointment.appointment_date
+                        ).toLocaleDateString()}</p>
+                        <p>Time: ${appointment.time_slot}</p>
+                        <p>Status: ${appointment.status}</p>
+                        <p>Memo: ${appointment.doctor_memo || "N/A"}</p>
+                    `;
+                appointmentsList.appendChild(appointmentElement);
+              });
+            })
+            .catch((error) => {
+              console.error("Error loading appointments:", error);
+              appointmentsList.innerHTML =
+                "<p>Error loading appointments. Please try again later.</p>";
+            });
+        }
+        // Initial load
+        document.querySelector('.nav-links a[href="#overview"]').click();
+      });
+    </script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const navLinks = document.querySelectorAll(".nav-link");
+        const sections = document.querySelectorAll(".dashboard-section");
+
+        navLinks.forEach((link) => {
+          link.addEventListener("click", function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute("href").substring(1);
+
+            navLinks.forEach((link) => link.classList.remove("active"));
+            this.classList.add("active");
+
+            sections.forEach((section) => {
+              section.style.display = "none";
+            });
+
+            const targetSection = document.getElementById(targetId);
+            targetSection.style.display = "block";
+
+            if (targetId === "messages") {
+              loadChats();
+            }
+
+            if (targetId === "roomStatus") {
+                    fetch("/get_room_status")
+                        .then(response => response.json())
+                        .then(data => {
+                            const roomStatusContent = document.getElementById("roomStatusContent");
+                            if (data.room_assigned) {
+                                roomStatusContent.innerHTML = `
+                                    <p>Room Number: ${data.room_number}</p>
+                                    <p>Type: ${data.room_type}</p>
+                                    <p>Directions: ${data.directions}</p>
+                                `;
+                            } else {
+                                roomStatusContent.innerHTML = `
+                                    <center><p>No room assigned yet.</p></center>
+                                    <img src="{{ url_for('static', filename='images/find-haybale.gif') }}" alt="Rolling Cactus"></center>
+                                `;
+                            }
+                        })
+                        .catch(error => console.error("Error fetching room status:", error));
+                }
+          });
+        });
+
+        // Initial load
+        document.querySelector('.nav-links a[href="#overview"]').click();
+      });
+
+      function loadChats() {
+        const chatList = document.getElementById("chatList");
+        chatList.innerHTML = "";
+
+        fetch("/get_chat_partners") // Replace with your actual endpoint
+          .then((response) => response.json())
+          .then((data) => {
+            data.forEach((partner) => {
+              const chatItem = document.createElement("div");
+              chatItem.textContent = partner.name;
+              chatItem.dataset.chatRoomId = partner.chat_room_id;
+              chatItem.dataset.partnerId = partner.id;
+              chatItem.classList.add("chat-item");
+              chatItem.addEventListener("click", function () {
+                document
+                  .querySelectorAll(".chat-item")
+                  .forEach((item) => item.classList.remove("active"));
+                chatItem.classList.add("active");
+                document.getElementById("chatHeader").textContent = partner.type;
+                if (partner.chat_room_id != "Null") {
+                  loadMessages(partner.chat_room_id);
+                }
+              });
+              chatList.appendChild(chatItem);
+            });
+          })
+          .catch((error) => console.error("Error loading chat partners:", error));
+      }
+
+      function sendMessage() {
+        const messageInput = document.getElementById("messageInput");
+        const message = messageInput.value.trim();
+        const activeChat = document.querySelector(".chat-item.active");
+
+        if (!activeChat) {
+          alert("Please select a chat to send a message.");
+          return;
+        }
+
+        const chatRoomId = activeChat.dataset.chatRoomId;
+        const partnerId = activeChat.dataset.partnerId;
+        fetch("/send_message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_room_id: chatRoomId,
+            partner_id: partnerId,
+            message: message,
+            sender_type: "patient",
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            messageInput.value = "";
+            if (data.chat_room_id != "Null") {
+              loadMessages(data.chat_room_id);
+            }
+            loadChats();
+          })
+          .catch((error) => console.error("Error sending message:", error));
+      }
+
+      function loadMessages(chatRoomId) {
+        if (chatRoomId == null) {
+          const messagesDiv = document.getElementById("chatMessages");
+          messagesDiv.innerHTML = "";
+          return;
+        }
+        fetch(`/get_messages/${chatRoomId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            const messagesDiv = document.getElementById("chatMessages");
+            messagesDiv.innerHTML = "";
+            data.forEach((msg) => {
+              const messageElement = document.createElement("div");
+              messageElement.textContent = `${msg[0]}: ${msg[1]}`;
+              messagesDiv.appendChild(messageElement);
+            });
+          });
+      }
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch("/get_room_status")
+                .then(response => response.json())
+                .then(data => {
+                    const roomStatusDiv = document.getElementById("roomStatus");
+                    if (data.room_assigned) {
+                        roomStatusDiv.innerHTML = `
+                            <p>Room Number: ${data.room_number}</p>
+                            <p>Floor: ${data.floor}</p>
+                            <p>Directions: ${data.directions}</p>
+                        `;
+                    } else {
+                        roomStatusDiv.innerHTML = `
+                            <center><p>No room assigned yet.</p>
+                            <img class="haybale-gif" src="{{ url_for('static', filename='images/find-haybale.gif') }}" alt="Rolling Cactus"></center>
+                        `;
+                    }
+                })
+                .catch(error => console.error("Error fetching room status:", error));
+        });
+    </script>
+    
+  </body>
 </html>

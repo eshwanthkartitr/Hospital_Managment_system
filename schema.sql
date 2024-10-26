@@ -84,21 +84,44 @@ CREATE TABLE IF NOT EXISTS notifications (
     is_read BOOLEAN DEFAULT FALSE
 );
 
--- Sample queries for patients table
--- Insert a new patient
-INSERT INTO patients (name, email, phone, password, gender, medical_record)
-VALUES ($1, $2, $3, $4, $5, $6);
+CREATE TABLE IF NOT EXISTS rooms (
+    id SERIAL PRIMARY KEY,
+    room_number VARCHAR(10) NOT NULL,
+    room_type VARCHAR(50) NOT NULL,
+    capacity INTEGER NOT NULL,
+    status VARCHAR(20) DEFAULT 'available'
+);
 
--- Update patient's profile picture
-UPDATE patients SET profile_pic = $1 WHERE id = $2;
+CREATE TABLE IF NOT EXISTS beds (
+    id SERIAL PRIMARY KEY,
+    room_id INTEGER REFERENCES rooms(id),
+    bed_number VARCHAR(10) NOT NULL,
+    status VARCHAR(20) DEFAULT 'available'
+);
 
--- Get patient information
-SELECT * FROM patients WHERE id = $1;
+-- Billing and Payments
+CREATE TABLE IF NOT EXISTS bills (
+    id SERIAL PRIMARY KEY,
+    patient_id INTEGER REFERENCES patients(id),
+    appointment_id INTEGER REFERENCES appointments(id),
+    total_amount DECIMAL(10, 2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'unpaid',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Sample queries for doctor_applications table
--- Insert a new doctor application
-INSERT INTO doctor_applications (name, email, specialization, experience, resume_path, similarity_score)
-VALUES ($1, $2, $3, $4, $5, $6);
+CREATE TABLE IF NOT EXISTS payments (
+    id SERIAL PRIMARY KEY,
+    bill_id INTEGER REFERENCES bills(id),
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_method VARCHAR(20),
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Get all doctor applications ordered by similarity score
-SELECT * FROM doctor_applications ORDER BY similarity_score DESC;
+-- Inventory Management
+CREATE TABLE IF NOT EXISTS inventory (
+    id SERIAL PRIMARY KEY,
+    item_name VARCHAR(100) NOT NULL,
+    quantity INTEGER NOT NULL,
+    threshold INTEGER NOT NULL,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

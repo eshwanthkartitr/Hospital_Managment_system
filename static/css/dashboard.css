@@ -373,16 +373,145 @@ h1 {
     transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
+.haybale-gif {
+    width: 200px;
+    height: 200px;
+    display: block;
+    margin: 0 auto;
+    border-radius: 10px;
+}
+
 .btn-reschedule:hover, .btn-schedule:hover {
     opacity: 0.9;
     transform: translateY(-2px);
 }
 
 .btn-schedule {
-    margin-top: 20px;
+    background-color: var(--primary-color);
+    color: var(--body-color);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
     font-size: 1em;
-    position: relative; /* Add this line */
-    z-index: 1; /* Add this line */
+    margin-top: 20px;
+}
+
+.btn-schedule:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+:root {
+    --status-accepted-bg-light: rgba(76, 175, 80, 0.2);
+    --status-accepted-border-light: rgba(76, 175, 80, 0.5);
+    --status-rejected-bg-light: rgba(244, 67, 54, 0.2);
+    --status-rejected-border-light: rgba(244, 67, 54, 0.5);
+    --status-pending-bg-light: rgba(255, 152, 0, 0.2);
+    --status-pending-border-light: rgba(255, 152, 0, 0.5);
+
+    --status-accepted-bg-dark: rgba(56, 142, 60, 0.3);
+    --status-accepted-border-dark: rgba(56, 142, 60, 0.6);
+    --status-rejected-bg-dark: rgba(211, 47, 47, 0.3);
+    --status-rejected-border-dark: rgba(211, 47, 47, 0.6);
+    --status-pending-bg-dark: rgba(255, 193, 7, 0.3);
+    --status-pending-border-dark: rgba(255, 193, 7, 0.6);
+}
+
+[data-theme="light"] {
+    --status-accepted-bg: var(--status-accepted-bg-light);
+    --status-accepted-border: var(--status-accepted-border-light);
+    --status-rejected-bg: var(--status-rejected-bg-light);
+    --status-rejected-border: var(--status-rejected-border-light);
+    --status-pending-bg: var(--status-pending-bg-light);
+    --status-pending-border: var(--status-pending-border-light);
+}
+
+[data-theme="dark"] {
+    --status-accepted-bg: var(--status-accepted-bg-dark);
+    --status-accepted-border: var(--status-accepted-border-dark);
+    --status-rejected-bg: var(--status-rejected-bg-dark);
+    --status-rejected-border: var(--status-rejected-border-dark);
+    --status-pending-bg: var(--status-pending-bg-dark);
+    --status-pending-border: var(--status-pending-border-dark);
+}
+
+.status-accepted {
+    color: var(--text-dark);
+    background-color: var(--status-accepted-bg);
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid var(--status-accepted-border);
+}
+
+.status-rejected {
+    color: var(--text-dark);
+    background-color: var(--status-rejected-bg);
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid var(--status-rejected-border);
+}
+
+.status-pending {
+    color: var(--text-dark);
+    background-color: var(--theme-light);
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid var(--status-pending-border);
+}
+
+input[type="date"] {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: var(--theme-light);
+    color: var(--text-default);
+    transition: background-color var(--transition-normal), color var(--transition-normal);
+    margin-bottom: 20px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+#scheduleModal{
+    height:100vh;
+}
+
+.modal-content {
+    background-color: var(--body-color);
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    width: 80%;
+    border-radius: 8px;
+}
+
+.close {
+    color: var(--text-dark);
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: var(--primary-color);
+    text-decoration: none;
+    cursor: pointer;
 }
 
 .custom-cursor {
@@ -412,7 +541,6 @@ h1 {
 .hide-cursor {
     cursor: none !important;
 }
-
 @media (max-width: 768px) {
     .dashboard-container {
         flex-direction: column;
@@ -448,3 +576,241 @@ h1 {
 ::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
+#doctorSelection {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+}
+
+.doctor-item {
+    padding: 5px;
+    cursor: pointer;
+}
+
+.doctor-item.selected {
+    background-color: #e0e0e0;
+}
+
+#slotsContainer{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.slot {
+    padding: 10px;
+    margin: 5px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+
+.available {
+    background-color: #c8e6c9; /* Light green */
+}
+
+.booked {
+    background-color: #e57373; /* Light red */
+    color: #fff;
+    cursor: not-allowed;
+}
+
+.appointment-item {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+}
+
+.appointment-item h4 {
+    margin: 0;
+    font-size: 1.2em;
+}
+
+.appointment-item p {
+    margin: 5px 0;
+}
+
+
+/* ... existing code ... */
+.slot {
+    padding: 10px;
+    margin: 5px;
+    width: 100px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.available {
+    color: var(--primary-color);
+    background-color: #c8e6c9; /* Light green */
+}
+
+.booked {
+    background-color: #e57373; /* Light red */
+    color: #fff;
+    cursor: not-allowed;
+}
+
+.slot:hover {
+    transform: scale(1.05);
+}
+
+/* Add this to your CSS files */
+.chat-container {
+    display: flex;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    transition: box-shadow var(--transition-fast);
+    max-width: 800px; /* Fixed width for the chat container */
+    margin: 0 auto; /* Center the chat container */
+    height: 600px; /* Fixed height for the chat container */
+}
+
+.chat-container:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+.chat-list {
+    width: 30%;
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    background-color: var(--theme-light);
+    transition: background-color var(--transition-normal);
+    padding: 10px;
+}
+
+.chat-item {
+    padding: 15px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), transform var(--transition-fast);
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+.chat-item:hover {
+    background-color: var(--primary-color);
+    color: var(--body-color);
+    transform: scale(1.02);
+}
+
+.chat-item.active {
+    color: var(--body-color);
+    background-color: var(--primary-color);
+}
+
+.chat-window {
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--body-color);
+    padding: 10px;
+}
+
+.chat-header {
+    padding: 10px;
+    background-color: var(--theme-light);
+    border-bottom: 1px solid var(--border-color);
+    font-weight: bold;
+    color: var(--text-dark);
+    transition: background-color var(--transition-normal);
+    text-align: center;
+}
+
+.chat-messages {
+    flex-grow: 1;
+    padding: 10px;
+    overflow-y: auto;
+    background-color: var(--body-color);
+    animation: fadeIn 0.5s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-message {
+    padding: 12px 20px;
+    border-radius: 20px;
+    background-color: var(--theme-light);
+    box-shadow: var(--shadow-sm);
+    animation: slideIn 0.3s ease-out;
+    max-width: 100%; /* Occupy full width */
+    word-wrap: break-word;
+    margin-bottom: 10px;
+}
+
+.chat-message.sent {
+    background-color: #c8e6c9; /* Light green for sent messages */
+    align-self: flex-end;
+}
+
+.chat-message.received {
+    background-color: #e0e0e0; /* Light gray for received messages */
+    align-self: flex-start;
+}
+
+.chat-input {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--theme-light);
+    align-items: center;
+}
+
+.chat-input input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background-color: var(--body-color);
+    color: var(--text-dark);
+    transition: background-color var(--transition-normal), color var(--transition-normal);
+    margin-right: 10px;
+}
+
+.chat-input input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.chat-input button {
+    padding: 10px 20px;
+    background-color: var(--primary-color);
+    color: var(--body-color);
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.chat-input button:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+

@@ -1,147 +1,484 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Doctor Dashboard - EHMS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&family=Signika:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
-</head>
-<body>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600&family=Signika:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/dashboard.css') }}"
+    />
+    <style>
+      .accept-btn{
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .reject-btn{
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      </style>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/settings.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/doc.css') }}"
+    />
+  </head>
+  <body>
     <div class="dashboard-container">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="EHMS Logo" class="logo-light">
-                    <img src="{{ url_for('static', filename='images/logo-darkmode.png') }}" alt="EHMS Logo" class="logo-dark">
-                </div>
-            </div>
-            <ul class="nav-links">
-                <li class="active"><a href="#overview"><i class="fas fa-home"></i> Overview</a></li>
-                <li><a href="#appointments"><i class="fas fa-calendar-alt"></i> Appointments</a></li>
-                <li><a href="#patients"><i class="fas fa-users"></i> My Patients</a></li>
-                <li><a href="#chats"><i class="fas fa-comments"></i> Patient Chats</a></li>
-                <li><a href="#settings"><i class="fas fa-cog"></i> Settings</a></li>
-            </ul>
-            <div class="sidebar-footer">
-                <div class="theme-toggle">
-                    <input type="checkbox" id="theme-switch" class="theme-switch">
-                    <label for="theme-switch" class="switch-label">
-                        <i class="fas fa-sun"></i>
-                        <i class="fas fa-moon"></i>
-                    </label>
-                </div>
-                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </nav>
-        
-        <main class="main-content">
-            <header>
-                <h1>Welcome, Dr. {{ doctor.name }}!</h1>
-                <div class="user-info">
-                    <i class="fas fa-user-md avatar"></i>
-                    <span>{{ doctor.specialty }}</span>
-                </div>
-            </header>
-            
-            <section id="overview" class="dashboard-section">
-                <h2>Overview</h2>
-                <div class="cards-container">
-                    <div class="card">
-                        <i class="fas fa-calendar-check"></i>
-                        <h3>Today's Appointments</h3>
-                        <p>{{ today_appointments_count }} Scheduled</p>
-                    </div>
-                    <div class="card">
-                        <i class="fas fa-user-clock"></i>
-                        <h3>Pending Requests</h3>
-                        <p>{{ pending_appointments_count }} Pending</p>
-                    </div>
-                    <div class="card">
-                        <i class="fas fa-comments"></i>
-                        <h3>Active Chats</h3>
-                        <p>{{ active_chats_count }} Active</p>
-                    </div>
-                    <div class="card">
-                        <i class="fas fa-bell"></i>
-                        <h3>Notifications</h3>
-                        <p>{{ unread_notifications_count }} Unread</p>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="appointments" class="dashboard-section">
-                <h2>Appointment Requests</h2>
-                <div class="appointments-container">
-                    <div class="pending-appointments">
-                        <h3>Pending Requests</h3>
-                        <div class="appointment-list">
-                            {% for appointment in pending_appointments %}
-                            <div class="appointment-card">
-                                <div class="appointment-info">
-                                    <h4>{{ appointment.patient_name }}</h4>
-                                    <p><i class="fas fa-calendar"></i> {{ appointment.date }}</p>
-                                    <p><i class="fas fa-clock"></i> {{ appointment.time_slot }}</p>
-                                    <p><i class="fas fa-note-medical"></i> {{ appointment.reason }}</p>
-                                </div>
-                                <div class="appointment-actions">
-                                    <button onclick="handleAppointment({{ appointment.id }}, 'accept')" class="btn-accept">
-                                        <i class="fas fa-check"></i> Accept
-                                    </button>
-                                    <button onclick="handleAppointment({{ appointment.id }}, 'reject')" class="btn-reject">
-                                        <i class="fas fa-times"></i> Reject
-                                    </button>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-            </section>
+      <nav class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <img
+              src="{{ url_for('static', filename='images/logo.png') }}"
+              alt="EHMS Logo"
+              class="logo-light"
+            />
+            <img
+              src="{{ url_for('static', filename='images/logo-darkmode.png') }}"
+              alt="EHMS Logo"
+              class="logo-dark"
+            />
+          </div>
+        </div>
+        <ul class="nav-links">
+          <li>
+            <a href="#overview" class="nav-link active"
+              ><i class="fas fa-home"></i> Overview</a
+            >
+          </li>
+          <li>
+            <a href="#appointments" class="nav-link"
+              ><i class="fas fa-calendar-alt"></i> Appointments</a
+            >
+          </li>
+          <li>
+            <a href="#chats" class="nav-link"
+              ><i class="fas fa-comments"></i> Patient Chats</a
+            >
+          </li>
+          <li>
+            <a href="#settings" class="nav-link"
+              ><i class="fas fa-cog"></i> Settings</a
+            >
+          </li>
+        </ul>
+        <div class="sidebar-footer">
+          <div class="theme-toggle">
+            <input type="checkbox" id="theme-switch" class="theme-switch" />
+            <label for="theme-switch" class="switch-label">
+              <i class="fas fa-sun"></i>
+              <i class="fas fa-moon"></i>
+            </label>
+          </div>
+          <a href="{{ url_for('logout') }}" class="logout-btn"
+            ><i class="fas fa-sign-out-alt"></i> Logout</a
+          >
+        </div>
+      </nav>
 
-            <section id="chats" class="dashboard-section">
-                <h2>Patient Chats</h2>
-                <div class="chat-container">
-                    <div class="chat-list">
-                        {% for chat in active_chats %}
-                        <div class="chat-card" onclick="openChat({{ chat.patient_id }})">
-                            <div class="chat-preview">
-                                <h4>{{ chat.patient_name }}</h4>
-                                <p class="last-message">{{ chat.last_message }}</p>
-                                <span class="timestamp">{{ chat.last_message_time }}</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <div class="chat-window" id="chatWindow">
-                        <div class="chat-header">
-                            <h3 id="chatPatientName"></h3>
-                            <button onclick="closeChat()" class="btn-close">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="chat-messages" id="chatMessages">
-                            <!-- Messages will be loaded here -->
-                        </div>
-                        <div class="chat-input">
-                            <input type="text" id="messageInput" placeholder="Type your message...">
-                            <button onclick="sendMessage()" class="btn-send">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
+      <main class="main-content">
+        <header>
+          <h1>Welcome, Dr. {{ user['name'] }}!</h1>
+          <div class="user-info">
+            <i class="fas fa-user-md avatar"></i>
+            <span>{{ user['name'] }}</span>
+          </div>
+        </header>
+
+        <section id="overview" class="dashboard-section active">
+          <h2>Overview</h2>
+          <div class="cards-container">
+            <div class="card">
+              <i class="fas fa-calendar-check"></i>
+              <h3>Today's Appointments</h3>
+              <p id="todayAppointments">Loading...</p>
+            </div>
+            <div class="card">
+              <i class="fas fa-user-injured"></i>
+              <h3>Total Patients</h3>
+              <p id="totalPatients">Loading...</p>
+            </div>
+            <div class="card">
+              <i class="fas fa-comments"></i>
+              <h3>Unread Messages</h3>
+              <p id="unreadMessages">Loading...</p>
+            </div>
+            <div class="card">
+              <i class="fas fa-chart-line"></i>
+              <h3>Weekly Appointments</h3>
+              <p id="weeklyAppointments">Loading...</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="appointments" class="dashboard-section">
+          <h2>Appointments</h2>
+          <div id="appointmentsCalendar"></div>
+          <div id="appointmentsList"></div>
+        </section>
+
+        <section id="chats" class="dashboard-section">
+          <h2>Patient Chats</h2>
+          <div class="chat-container">
+            <div class="chat-list" id="chatList">
+              <!-- Chat list will be populated here -->
+            </div>
+            <div class="chat-window">
+              <div class="chat-header" id="chatHeader">
+                <!-- Active chat partner's name will be displayed here -->
+              </div>
+              <div class="chat-messages" id="chatMessages">
+                <!-- Chat messages will be displayed here -->
+              </div>
+              <div class="chat-input">
+                <input
+                  type="text"
+                  id="messageInput"
+                  placeholder="Type your message..."
+                />
+                <button onclick="sendMessage()">Send</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings" class="settings-section" style="display: none">
+          <h2>Account Settings</h2>
+          <p>
+            Patient ID: <span id="patientId">{{ user['name'] }}</span> (This
+            cannot be changed)
+          </p>
+          <form id="updateProfileForm">
+            <div class="form-group">
+              <label for="updateName">Full Name</label>
+              <input
+                type="text"
+                id="updateName"
+                name="name"
+                value="{{ user['name'] }}"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="updateEmail">Email</label>
+              <input
+                type="email"
+                id="updateEmail"
+                name="email"
+                value="{{ user['email'] }}"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="updatePhone">Phone</label>
+              <input
+                type="tel"
+                id="updatePhone"
+                name="phone"
+                value="{{ user['phone'] }}"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="updateSpecialization">Specialization</label>
+              <input
+                type="text"
+                id="updateSpecialization"
+                name="specialization"
+                value="{{ user['speciality'] }}"
+                required
+              />
+            </div>
+            <button type="submit">Update Profile</button>
+          </form>
+
+          <h3>Change Password</h3>
+          <form id="changePasswordForm">
+            <div class="form-group">
+              <label for="currentPassword">Current Password</label>
+              <input
+                type="password"
+                id="currentPassword"
+                name="current_password"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="newPassword">New Password</label>
+              <input
+                type="password"
+                id="newPassword"
+                name="new_password"
+                required
+              />
+            </div>
+            <button type="submit">Change Password</button>
+          </form>
+
+          <h3>Update Profile Picture</h3>
+          <form id="updateProfilePicForm" enctype="multipart/form-data">
+            <div class="form-group">
+              <label for="profilePic">New Profile Picture</label>
+              <input
+                type="file"
+                id="profilePic"
+                name="profile_pic"
+                accept="image/*"
+                required
+              />
+            </div>
+            <button type="submit">Update Picture</button>
+          </form>
+
+          <form id="broadcastForm">
+            <textarea
+              id="broadcastMessage"
+              placeholder="Enter your message"
+            ></textarea>
+            <button type="submit">Send to All Doctors</button>
+          </form>
+        </section>
+      </main>
     </div>
 
     <div class="cursor-gif">
-        <img src="{{ url_for('static', filename='images/cur_hov.gif') }}" alt="Custom Cursor GIF">
+      <img
+        src="{{ url_for('static', filename='images/cur_hov.gif') }}"
+        alt="Custom Cursor GIF"
+      />
     </div>
 
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/doctor-chat.js') }}"></script>
-</body>
+    <script src="{{ url_for('static', filename='js/doc_dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const navLinks = document.querySelectorAll(".nav-link");
+        const sections = document.querySelectorAll(".dashboard-section");
+
+        navLinks.forEach((link) => {
+          link.addEventListener("click", function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute("href").substring(1);
+
+            navLinks.forEach((link) => link.classList.remove("active"));
+            this.classList.add("active");
+
+            sections.forEach((section) => {
+              section.classList.remove("active");
+              section.style.display = "none";
+            });
+
+            const targetSection = document.getElementById(targetId);
+            targetSection.classList.add("active");
+            targetSection.style.display = "block";
+
+            if (targetId === "appointments") {
+              loadAppointments();
+            } else if (targetId === "chats") {
+              loadChats();
+            }
+          });
+        });
+
+        // Initial load
+        loadOverviewData();
+      });
+
+      function loadOverviewData() {
+        // Simulated data loading. Replace with actual API calls.
+        setTimeout(() => {
+          document.getElementById("todayAppointments").textContent = "5";
+          document.getElementById("totalPatients").textContent = "120";
+          document.getElementById("unreadMessages").textContent = "3";
+          document.getElementById("weeklyAppointments").textContent = "25";
+        }, 1000);
+      }
+
+      function loadAppointments() {
+        fetch("/get_appointments")
+          .then((response) => response.json())
+          .then((data) => {
+            const appointmentsList =
+              document.getElementById("appointmentsList");
+            appointmentsList.innerHTML = ""; // Clear existing content
+
+            data.forEach((appointment) => {
+              const appointmentItem = document.createElement("div");
+              appointmentItem.classList.add("appointment-item");
+              appointmentItem.innerHTML = `
+                    <h4>Appointment with ${appointment.patient_name}</h4>
+                    <p>Date: ${appointment.Date} at ${appointment.time_slot}</p>
+                    <button onclick="acceptAppointment(${appointment.id})" class="accept-btn">
+                        <i class="fas fa-check"></i> Accept
+                    </button>
+                    <button onclick="rejectAppointment(${appointment.id})" class="reject-btn">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                `;
+              appointmentsList.appendChild(appointmentItem);
+            });
+          })
+          .catch((error) =>
+            console.error("Error loading appointments:", error)
+          );
+      }
+
+      function acceptAppointment(appointmentId) {
+        const memo = prompt("Enter a memo for accepting the appointment:");
+        fetch(`/appointments/accept/${appointmentId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ memo: memo }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.message);
+            loadAppointments(); // Refresh the list of appointments
+          })
+          .catch((error) =>
+            console.error("Error accepting appointment:", error)
+          );
+      }
+
+      function rejectAppointment(appointmentId) {
+        const memo = prompt("Enter a memo for rejecting the appointment:");
+        fetch(`/appointments/reject/${appointmentId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ memo: memo }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.message);
+            loadAppointments(); // Refresh the list of appointments
+          })
+          .catch((error) =>
+            console.error("Error rejecting appointment:", error)
+          );
+      }
+
+      function loadChats() {
+        const chatList = document.getElementById("chatList");
+        chatList.innerHTML = "";
+
+        fetch("/get_chat_partners") // Replace with your actual endpoint
+          .then((response) => response.json())
+          .then((data) => {
+            data.forEach((partner) => {
+              const chatItem = document.createElement("div");
+              chatItem.textContent = partner.name;
+              chatItem.dataset.chatRoomId = partner.chat_room_id;
+              chatItem.dataset.partnerId = partner.id;
+              chatItem.classList.add("chat-item");
+              chatItem.addEventListener("click", function () {
+                document
+                  .querySelectorAll(".chat-item")
+                  .forEach((item) => item.classList.remove("active"));
+                chatItem.classList.add("active");
+                document.getElementById("chatHeader").textContent =
+                  partner.type;
+                if (partner.chat_room_id != "Null") {
+                  loadMessages(partner.chat_room_id);
+                }
+              });
+              chatList.appendChild(chatItem);
+            });
+          })
+          .catch((error) =>
+            console.error("Error loading chat partners:", error)
+          );
+      }
+
+      function sendMessage() {
+        const messageInput = document.getElementById("messageInput");
+        const message = messageInput.value.trim();
+        const activeChat = document.querySelector(".chat-item.active");
+
+        if (!activeChat) {
+          alert("Please select a chat to send a message.");
+          return;
+        }
+
+        const chatRoomId = activeChat.dataset.chatRoomId;
+        const partnerId = activeChat.dataset.partnerId; // Assuming partnerId is stored in the dataset
+        console.log("chatRoomId : ", chatRoomId);
+        console.log("partnerId : ", partnerId);
+        fetch("/send_message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_room_id: chatRoomId,
+            partner_id: partnerId,
+            message: message,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Message sent:", data);
+            messageInput.value = "";
+            console.log("data.chat_room_id : ", data.chat_room_id);
+            if (data.chat_room_id != "Null") {
+              loadMessages(data.chat_room_id); // Refresh messages with the correct chat room ID
+            }
+            loadChats();
+          })
+          .catch((error) => console.error("Error sending message:", error));
+      }
+
+      function loadMessages(chatRoomId) {
+        console.log("chatRoomId : ", chatRoomId);
+        if (chatRoomId == null) {
+          const messagesDiv = document.getElementById("chatMessages");
+          messagesDiv.innerHTML = "";
+          return;
+        }
+        fetch(`/get_messages/${chatRoomId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            const messagesDiv = document.getElementById("chatMessages");
+            messagesDiv.innerHTML = "";
+            console.log("data : ", data);
+            data.forEach((msg) => {
+              const messageElement = document.createElement("div");
+              console.log("msg : ", msg);
+              messageElement.textContent = `${msg[0]}: ${msg[1]}`;
+              messagesDiv.appendChild(messageElement);
+            });
+          });
+      }
+    </script>
+
+    <div id="confirmationModal" class="modal">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Confirm Action</h2>
+        <p id="modalMessage"></p>
+        <textarea id="memoInput" placeholder="Enter a memo"></textarea>
+        <button id="confirmButton">Confirm</button>
+        <button id="cancelButton">Cancel</button>
+      </div>
+    </div>
+  </body>
 </html>

@@ -8,6 +8,53 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/hr.css') }}">
     <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
+    <style>
+        .right-align {
+            max-width: 500px;
+            margin: 0 auto;
+            margin-right: 20px;
+        }
+        .room {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            transition: transform 0.3s ease;
+        }
+        .room:hover {
+            transform: scale(1.05);
+        }
+        .bed {
+            display: block;
+            width: 40px;
+            height: 40px;
+            margin: 5px;
+            text-align: center;
+            line-height: 40px;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .bed.occupied {
+            background-color: #e74c3c;
+        }
+        .bed.available {
+            background-color: #2ecc71;
+        }
+        .bed.selected {
+            border: 2px solid #3498db;
+            transform: scale(1.1);
+        }
+        .bed.assigned {
+            background-color: #f39c12;
+        }
+        .bed-icon {
+            font-size: 10px;
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -19,7 +66,10 @@
                 </div>
             </div>
             <ul class="nav-links">
-                <li class="active"><a href="#review"><i class="fas fa-user-md"></i> Review Applications</a></li>
+                <li><a href="#review"><i class="fas fa-user-md"></i> Review Applications</a></li>
+                <li><a href="#manage-doctors"><i class="fas fa-user-md"></i> Manage Doctors</a></li>
+                <li><a href="#manage-patients"><i class="fas fa-user"></i> Manage Patients</a></li>
+                <li><a href="#manage-rooms"><i class="fas fa-bed"></i> Manage Rooms</a></li>
             </ul>
             <div class="sidebar-footer">
                 <div class="theme-toggle">
@@ -79,25 +129,176 @@
                 </div>
                 {% endif %}
             </section>
-            
-            {% for doctor in doctors %}
-                <div>
-                    <p>{{ doctor.name }} - {{ doctor.specialization }}</p>
-                    <form action="{{ url_for('remove_doctor', doctor_id=doctor.id) }}" method="post">
-                        <button type="submit">Remove Doctor</button>
-                    </form>
-                </div>
-            {% endfor %}
 
-            {% for patient in patients %}
-                <div>
-                    <p>{{ patient.name }} - {{ patient.email }}</p>
-                    <form action="{{ url_for('remove_patient', patient_id=patient.id) }}" method="post">
-                        <button type="submit">Remove Patient</button>
+            <section id="manage-doctors" class="dashboard-section">
+                <h2>Manage Doctors</h2>
+                {% for doctor in doctors %}
+                    <div>
+                        <p>{{ doctor[1] }} - {{ doctor[2] }}</p>
+                        <form class="right-align" action="{{ url_for('remove_doctor', doctor_id=doctor[0]) }}" method="post">
+                            <button type="submit">Remove Doctor</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </section>
+
+            <section id="manage-patients" class="dashboard-section">
+                <h2>Manage Patients</h2>
+                {% for patient in patients %}
+                    <div>
+                        <p>{{ patient[1] }} - {{ patient[2] }}</p>
+                        <form class="right-align" action="{{ url_for('remove_patient', patient_id=patient[0]) }}" method="post">
+                            <button type="submit">Remove Patient</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </section>
+
+            <section id="manage-rooms" class="dashboard-section" style="display: none;">
+                <h2>Manage Rooms and Beds</h2>
+                <div id="rooms-container"></div>
+                <div id="assign-form" style="display: none;">
+                    <h3>Assign Patient to Bed</h3>
+                    <form id="assign-patient-form">
+                        <label for="patient-select">Select Patient:</label>
+                        <select id="patient-select" required>
+                            {% for patient in patients %}
+                                <option value="{{ patient[0] }}">{{ patient[1] }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" id="selected-room-id">
+                        <input type="hidden" id="selected-bed-number">
+                        <button type="submit">Assign</button>
                     </form>
                 </div>
-            {% endfor %}
+            </section>
         </main>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-links a');
+            const sections = document.querySelectorAll('.dashboard-section');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    sections.forEach(section => {
+                        section.style.display = section.id === targetId ? 'block' : 'none';
+                    });
+                });
+            });
+
+            fetchRoomsAndBeds();
+        });
+
+        async function fetchRoomsAndBeds() {
+            try {
+                const response = await fetch('/get_rooms_and_beds');
+                const data = await response.json();
+                displayRoomsAndBeds(data);
+            } catch (error) {
+                console.error('Error fetching room and bed data:', error);
+            }
+        }
+
+        function displayRoomsAndBeds(data) {
+            const container = document.getElementById('rooms-container');
+            container.innerHTML = '';
+
+            const rooms = {};
+
+            data.forEach(item => {
+                const [roomId, roomNumber, roomType, capacity, roomStatus, bedNumber, bedStatus, patientName,patientId] = item;
+
+                if (!rooms[roomNumber]) {
+                    rooms[roomNumber] = {
+                        roomId: roomId,
+                        roomType: roomType,
+                        beds: []
+                    };
+                }
+                rooms[roomNumber].beds.push({
+                    bedNumber: bedNumber,
+                    status: bedStatus,
+                    patientName: patientName,
+                    patientId: patientId
+                });
+            });
+
+            for (const [roomNumber, roomData] of Object.entries(rooms)) {
+                const roomDiv = document.createElement('div');
+                roomDiv.className = 'room';
+                roomDiv.innerHTML = `<h3>Room ${roomNumber} (${roomData.roomType})</h3>`;
+
+                roomData.beds.forEach(bed => {
+                    const bedDiv = document.createElement('div');
+                    bedDiv.className = `bed ${bed.status === 'occupied' ? 'occupied' : 'available'}`;
+                    bedDiv.innerHTML = bed.status === 'occupied' ? `<span class="bed-icon">${bed.patientId}</span>` : '<i class="fas fa-bed bed-icon"></i>';
+                    bedDiv.dataset.roomId = roomData.roomId;
+                    bedDiv.dataset.bedNumber = bed.bedNumber;
+                    bedDiv.addEventListener('click', function() {
+                        if (bed.status === 'available') {
+                            document.querySelectorAll('.bed').forEach(b => b.classList.remove('selected'));
+                            bedDiv.classList.add('selected');
+                            document.getElementById('assign-form').style.display = 'block';
+                            document.getElementById('selected-room-id').value = bedDiv.dataset.roomId;
+                            document.getElementById('selected-bed-number').value = bedDiv.dataset.bedNumber;
+                        }
+                    });
+                    roomDiv.appendChild(bedDiv);
+                });
+
+                container.appendChild(roomDiv);
+            }
+        }
+
+        function fetch_remaining_patients() {
+            fetch('/get_remaining_patients')
+                .then(response => response.json())
+                .then(data => {
+                    const patientSelect = document.getElementById('patient-select');
+                    patientSelect.innerHTML = ''; // Clear existing options
+
+                    data.forEach(patient => {
+                        const option = document.createElement('option');
+                        option.value = patient[0];
+                        option.textContent = patient[1];
+                        patientSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error fetching remaining patients:', error));
+        }
+
+        document.getElementById('assign-patient-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const patientId = document.getElementById('patient-select').value;
+            const roomId = document.getElementById('selected-room-id').value;
+            const bedNumber = document.getElementById('selected-bed-number').value;
+
+            try {
+                const response = await fetch('/assign_room', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ patient_id: patientId, room_id: roomId, bed_number: bedNumber })
+                });
+
+                const result = await response.json();
+                alert(result.message);
+                fetchRoomsAndBeds(); 
+                fetch_remaining_patients();
+            } catch (error) {
+                console.error('Error assigning patient to bed:', error);
+            }
+        });
+
+        // Call this function when the page loads or when you need to refresh the list
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch_remaining_patients();
+        });
+    </script>
 </body>
 </html>
