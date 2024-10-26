@@ -1090,8 +1090,8 @@ def available_doctors():
 
 
 def send_otp(phone_number, otp):
-    account_sid = 'ACb76585657c40f7b84565e2ab6ae18d29'
-    auth_token = '9fdde09dce41cc8137460abefb63aa4e'
+    account_sid = 'Twillio_sid'
+    auth_token = 'Twillio_Auth'
     client = Client(account_sid, auth_token)
 
     message = client.messages.create(
