@@ -70,7 +70,6 @@
               ><i class="fas fa-cog"></i> Settings</a
             >
           </li>
-          
         </ul>
         <div class="sidebar-footer">
           <div class="theme-toggle">
@@ -292,14 +291,18 @@
                 <button onclick="sendMessage()">Send</button>
               </div>
             </div>
-            </div>
+          </div>
         </section>
 
-        <section id="roomStatus" class="dashboard-section" style="display: none;">
-            <h2>Room Allocation</h2>
-            <div id="roomStatusContent">
-                <!-- Room status will be dynamically updated here -->
-            </div>  
+        <section
+          id="roomStatus"
+          class="dashboard-section"
+          style="display: none"
+        >
+          <h2>Room Allocation</h2>
+          <div id="roomStatusContent">
+            <!-- Room status will be dynamically updated here -->
+          </div>
         </section>
       </main>
     </div>
@@ -439,7 +442,9 @@
               appointments.forEach((appointment) => {
                 const appointmentElement = document.createElement("div");
                 appointmentElement.classList.add("appointment-item");
-                appointmentElement.classList.add(`status-${appointment.status}`);
+                appointmentElement.classList.add(
+                  `status-${appointment.status}`
+                );
                 appointmentElement.innerHTML = `
                         <h4>${appointment.doctor_name} (${
                   appointment.specialty
@@ -490,25 +495,28 @@
             }
 
             if (targetId === "roomStatus") {
-                    fetch("/get_room_status")
-                        .then(response => response.json())
-                        .then(data => {
-                            const roomStatusContent = document.getElementById("roomStatusContent");
-                            if (data.room_assigned) {
-                                roomStatusContent.innerHTML = `
+              fetch("/get_room_status")
+                .then((response) => response.json())
+                .then((data) => {
+                  const roomStatusContent =
+                    document.getElementById("roomStatusContent");
+                  if (data.room_assigned) {
+                    roomStatusContent.innerHTML = `
                                     <p>Room Number: ${data.room_number}</p>
                                     <p>Type: ${data.room_type}</p>
                                     <p>Directions: ${data.directions}</p>
                                 `;
-                            } else {
-                                roomStatusContent.innerHTML = `
+                  } else {
+                    roomStatusContent.innerHTML = `
                                     <center><p>No room assigned yet.</p></center>
                                     <img src="{{ url_for('static', filename='images/find-haybale.gif') }}" alt="Rolling Cactus"></center>
                                 `;
-                            }
-                        })
-                        .catch(error => console.error("Error fetching room status:", error));
-                }
+                  }
+                })
+                .catch((error) =>
+                  console.error("Error fetching room status:", error)
+                );
+            }
           });
         });
 
@@ -534,7 +542,8 @@
                   .querySelectorAll(".chat-item")
                   .forEach((item) => item.classList.remove("active"));
                 chatItem.classList.add("active");
-                document.getElementById("chatHeader").textContent = partner.type;
+                document.getElementById("chatHeader").textContent =
+                  partner.type;
                 if (partner.chat_room_id != "Null") {
                   loadMessages(partner.chat_room_id);
                 }
@@ -542,7 +551,9 @@
               chatList.appendChild(chatItem);
             });
           })
-          .catch((error) => console.error("Error loading chat partners:", error));
+          .catch((error) =>
+            console.error("Error loading chat partners:", error)
+          );
       }
 
       function sendMessage() {
@@ -599,27 +610,28 @@
     </script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            fetch("/get_room_status")
-                .then(response => response.json())
-                .then(data => {
-                    const roomStatusDiv = document.getElementById("roomStatus");
-                    if (data.room_assigned) {
-                        roomStatusDiv.innerHTML = `
+      document.addEventListener("DOMContentLoaded", function () {
+        fetch("/get_room_status")
+          .then((response) => response.json())
+          .then((data) => {
+            const roomStatusDiv = document.getElementById("roomStatus");
+            if (data.room_assigned) {
+              roomStatusDiv.innerHTML = `
                             <p>Room Number: ${data.room_number}</p>
                             <p>Floor: ${data.floor}</p>
                             <p>Directions: ${data.directions}</p>
                         `;
-                    } else {
-                        roomStatusDiv.innerHTML = `
+            } else {
+              roomStatusDiv.innerHTML = `
                             <center><p>No room assigned yet.</p>
                             <img class="haybale-gif" src="{{ url_for('static', filename='images/find-haybale.gif') }}" alt="Rolling Cactus"></center>
                         `;
-                    }
-                })
-                .catch(error => console.error("Error fetching room status:", error));
-        });
+            }
+          })
+          .catch((error) =>
+            console.error("Error fetching room status:", error)
+          );
+      });
     </script>
-    
   </body>
 </html>

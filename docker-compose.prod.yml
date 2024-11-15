@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./static:/app/static
+      - ./templates:/app/templates
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=main.py
+      # Redis Configuration
+      - REDIS_HOST=ehms-redis3.redis.cache.windows.net
+      - REDIS_PORT=6380
+      - REDIS_PASSWORD=4V3i2If2NiavGbYHt5JpvAi7n0bLfSQIpAzCaDrCVoM=  # Use environment variable for security
+      - REDIS_SSL=True
+      # PostgreSQL Configuration
+      - POSTGRES_DB=ehms
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Tr@310305  # Use environment variable for security
+      - POSTGRES_HOST=ehms-db2.postgres.database.azure.com
+      - POSTGRES_PORT=5432
+    command: gunicorn --bind 0.0.0.0:8000 main:app --timeout 120
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    driver: bridge

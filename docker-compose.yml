@@ -1,0 +1,91 @@
+# version: '3.8'
+
+# services:
+#   web:
+#     build: .
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./static:/app/static
+#       - ./templates:/app/templates
+#     environment:
+#       - DATABASE_URL=postgresql://postgres:Tr@310305@db:5432/ehms
+#       - REDIS_URL=redis://redis:6379
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#     restart: always
+#     stop_grace_period: 10s  # Added this
+
+#   db:
+#     image: postgres:13
+#     container_name: backend-db
+#     environment:
+#       - POSTGRES_DB=ehms
+#       - POSTGRES_USER=postgres
+#       - POSTGRES_PASSWORD=Tr@310305
+#       - POSTGRES_HOST_AUTH_METHOD=trust  
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#       - ./complete_backup_utf8.sql:/docker-entrypoint-initdb.d/complete_backup_utf8.sql
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U postgres"]
+#       interval: 5s
+#       timeout: 5s
+#       retries: 5
+#       start_period: 10s  # Added this
+#     command: >
+#       bash -c "
+#         docker-entrypoint.sh postgres &
+#         sleep 10 &&
+#         psql -U postgres -d ehms -f /docker-entrypoint-initdb.d/complete_backup_utf8.sql &&
+#         wait
+#       "
+#     restart: always
+#     stop_grace_period: 30s  # Added this
+#     shm_size: '256mb'  # Added this
+
+#   redis:
+#     image: redis:6
+#     container_name: backend-redis
+#     ports:
+#       - "6379:6379"
+#     restart: always
+#     stop_grace_period: 10s  # Added this
+
+# volumes:
+#   postgres_data:
+#     driver: local  # Added this
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./static:/app/static
+      - ./templates:/app/templates
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=main.py
+      # Redis Configuration (updated)
+      - REDIS_HOST=ehms-redis3.redis.cache.windows.net
+      - REDIS_PORT=6380
+      - REDIS_PASSWORD=4V3i2If2NiavGbYHt5JpvAi7n0bLfSQIpAzCaDrCVoM=  # Will be set from the key we got above
+      - REDIS_SSL=True
+      # PostgreSQL Configuration
+      - POSTGRES_DB=ehms
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Tr@310305
+      - POSTGRES_HOST=ehms-db2.postgres.database.azure.com
+      - POSTGRES_PORT=5432
+    command: gunicorn --bind 0.0.0.0:8000 main:app --reload --timeout 120
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    driver: bridge

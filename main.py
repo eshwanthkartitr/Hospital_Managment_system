@@ -1,7 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-from flask_admin import Admin, BaseView, expose
-from flask_admin import AdminIndexView
-from flask_admin.menu import MenuLink
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, Response
 from flask_session import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -14,22 +11,62 @@ import numpy as np
 import os
 import redis
 import base64
-from datetime import datetime, timedelta
 from resume import review_resume
 from flask_mail import Mail, Message
+import logging
+from datetime import timedelta
+from urllib.parse import urlparse
 
-# Create the Flask application instance
-app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with a real secret key
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__,
+            static_folder='static',  
+            static_url_path='/static'  
+            )
+app.secret_key = 'your_secret_key'  
+
 
 # Redis Configuration
-app.config['SESSION_TYPE'] = 'redis'
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_USE_SIGNER'] = True
-app.config['SESSION_REDIS'] = redis.from_url('redis://localhost:6379')
+def init_redis():
+    try:
+        redis_client = redis.StrictRedis(
+            host="ehms-redis3.redis.cache.windows.net",
+            port=6380,
+            password="4V3i2If2NiavGbYHt5JpvAi7n0bLfSQIpAzCaDrCVoM=",
+            ssl=True,
+            ssl_cert_reqs=None,
+            decode_responses=False,  # Changed this to False  # Remove automatic encoding
+            socket_timeout=30,
+            socket_connect_timeout=30,
+            retry_on_timeout=True
+        )
+        
+        # Test connection
+        redis_client.ping()
+        logger.info("Redis connection successful!")
+        return redis_client
+    except Exception as e:
+        logger.error(f"Redis connection failed: {e}")
+        raise  # Raise the error instead of returning None
 
-# Initialize the session extension
+# Flask configuration
+app.config.update(
+    SESSION_TYPE='redis',
+    SESSION_REDIS=init_redis(),  # Initialize Redis connection
+    SESSION_PERMANENT=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
+    SESSION_USE_SIGNER=True,
+    SESSION_KEY_PREFIX='ehms:',
+    SECRET_KEY='your-fixed-secret-key-here'
+)
+
+# Initialize Flask-Session only once
 Session(app)
+
+# Remove the second Session initialization
+# Session(app)  # Remove this line
 
 # Load the English language model
 nlp = spacy.load("en_core_web_sm")
@@ -38,11 +75,11 @@ nlp = spacy.load("en_core_web_sm")
 db_pool = psycopg2.pool.SimpleConnectionPool(
     minconn=1,
     maxconn=10,
-    dbname="ehms",
-    user="postgres",
-    password="Tr@310305",
-    host="localhost",
-    port="5432"
+    dbname=os.getenv('POSTGRES_DB', 'ehms'),
+    user=os.getenv('POSTGRES_USER', 'postgres'),
+    password=os.getenv('POSTGRES_PASSWORD', 'Tr@310305'),
+    host=os.getenv('POSTGRES_HOST', 'ehms-db2.postgres.database.azure.com'),
+    port=os.getenv('POSTGRES_PORT', '5432')
 )
 
 
@@ -54,7 +91,9 @@ def release_db_connection(conn):
     db_pool.putconn(conn)
 
 
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = os.path.join(os.getenv('WEBAPP_STORAGE_HOME', ''), 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 ALLOWED_EXTENSIONS = {'pdf'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -62,6 +101,53 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def allowed_file_pdf(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.route('/test-static')
+def test_static():
+    return """
+    <html>
+        <head>
+            <link rel="stylesheet" href="/static/css/style.css">
+        </head>
+        <body>
+            <h1>Testing Static Files</h1>
+            <script src="/static/js/dashboard.js"></script>
+        </body>
+    </html>
+    """
+    
+@app.route('/test-redis')
+def test_redis():
+    try:
+        redis_client = app.config.get('SESSION_REDIS')
+        if not redis_client:
+            raise Exception("Redis client not configured")
+
+        # Test Redis connection
+        redis_client.ping()
+        
+        # Try to set and get a value
+        redis_client.set('test_key', 'test_value')
+        test_value = redis_client.get('test_key')
+        
+        # Set a session value
+        session['test'] = 'session_value'
+        
+        return jsonify({
+            'status': 'success',
+            'redis_connected': True,
+            'test_value': test_value,
+            'session_type': app.config.get('SESSION_TYPE'),
+            'session_data': dict(session)
+        })
+    except Exception as e:
+        logger.exception("Redis test failed")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'type': type(e).__name__
+        }), 500
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -101,43 +187,42 @@ def login():
     if request.method == 'POST':
         patient_name = request.form['id']
         password = request.form['password']
+        
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT name,password FROM admins")
-                user = cur.fetchall()
-                for i in user:
-                    if patient_name == i[0]:
-                        if password == i[1]:
-                            session['is_admin'] = True
-                            break
-            print(session)
-            print(user)
-        except psycopg2.Error as e:
-            print(f"Database error: {e}")
-            return jsonify({"message": "Login failed. Please try again."}), 500
-        finally:
-            release_db_connection(conn)
-
-        conn = get_db_connection()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT * FROM patients WHERE name = %s", (patient_name,))
+                # Check for admin
+                cur.execute("SELECT name, password FROM admins")
+                admins = cur.fetchall()
+                for admin in admins:
+                    if patient_name == admin[0] and password == admin[1]:
+                        session.clear()
+                        session['is_admin'] = True
+                        session['name'] = admin[0]
+                        session.modified = True
+                        break
+                # Check for patient
+                cur.execute("SELECT * FROM patients WHERE name = %s", (patient_name,))
                 user = cur.fetchone()
-
-                # Assuming password is at index 4
+                print(user)
+                
                 if user and check_password_hash(user[4], password):
-                    session['user_id'] = user[0]  # Store user ID in session
+                    session.clear()
+                    session['user_id'] = user[0]
                     session['name'] = user[1]
                     session['user_type'] = 'patient'
+                    session.modified = True  # Add this line
+                    logger.info(f"Patient login successful: {patient_name}")
+                    logger.debug(f"Final session data: {dict(session)}")
                     flash('Logged in successfully!', 'success')
                     return jsonify({"message": "Login successful"}), 200
                 else:
+                    logger.warning(f"Invalid login attempt for: {patient_name}")
                     flash('Invalid credentials. Please try again.', 'error')
                     return jsonify({"message": "Invalid credentials"}), 401
+                    
         except psycopg2.Error as e:
-            print(f"Database error: {e}")
+            logger.error(f"Database error during login: {str(e)}")
             return jsonify({"message": "Login failed. Please try again."}), 500
         finally:
             release_db_connection(conn)
@@ -183,30 +268,143 @@ def doctor_login():
 
 @app.route('/dashboard')
 def dashboard():
-    if 'user_id' not in session:
-        flash('Please log in to access the dashboard.', 'error')
-        return redirect(url_for('login'))
-
-    if session.get('user_type') == 'doctor':
-        return redirect(url_for('doctor_dashboard'))
-
-    conn = get_db_connection()
     try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id, name, email, phone, gender, medical_record, profile_pic FROM patients WHERE id = %s", (session['user_id'],))
-            user = cur.fetchone()
-            if user and user[6]:
-                profile_pic_base64 = base64.b64encode(user[6]).decode('utf-8')
-            else:
-                profile_pic_base64 = None
-        return render_template('patient_dashboard.html', user=user, profile_pic=profile_pic_base64)
-    except psycopg2.Error as e:
-        print(f"Database error: {e}")
-        flash('Error fetching user data', 'error')
-        return redirect(url_for('login'))
-    finally:
-        release_db_connection(conn)
+        # Debug logging
+        logger.debug("=== Dashboard Access Debug ===")
+        logger.debug(f"Session contents: {dict(session)}")
+        logger.debug(f"Request headers: {dict(request.headers)}")
+        
+        # Session check with detailed logging
+        if 'user_id' not in session and 'is_admin' not in session:
+            logger.error("No user_id or is_admin in session")
+            logger.debug(f"Current session data: {dict(session)}")
+            flash('Please log in to access the dashboard.', 'error')
+            return redirect(url_for('login'))
+
+        # Admin dashboard
+        if session.get('is_admin'):
+            logger.debug("Attempting to render admin dashboard")
+            try:
+                print("should work")
+                return render_template('patient_dashboard.html')
+            except Exception as e:
+                logger.error(f"Admin template error: {str(e)}")
+                return f"""
+                    <h1>Error Loading Admin Dashboard</h1>
+                    <p>Error Type: {type(e).__name__}</p>
+                    <p>Error Details: {str(e)}</p>
+                    <p>Session Data: {dict(session)}</p>
+                    <p>Template Path: {app.template_folder}/patient_dashboard.html</p>
+                    <a href="/login">Back to Login</a>
+                """, 500
+
+        # Doctor dashboard
+        if session.get('user_type') == 'doctor':
+            logger.debug("Attempting to render doctor dashboard")
+            try:
+                return redirect(url_for('doctor_dashboard'))
+            except Exception as e:
+                logger.error(f"Doctor redirect error: {str(e)}")
+                return f"Error redirecting to doctor dashboard: {str(e)}", 500
+
+        # Patient dashboard
+        try:
+            logger.debug(f"Attempting to fetch patient data for user_id: {session.get('user_id')}")
+            conn = get_db_connection()
+            
+            with conn.cursor() as cur:
+                # Log the query we're about to execute
+                user_id = session['user_id']
+                logger.info(f"Executing query for user_id: {user_id}")
+                
+                cur.execute("""
+                    SELECT id, name, email, phone, gender, medical_record, profile_pic 
+                    FROM patients 
+                    WHERE id = %s
+                """, (user_id,))
+                
+                user = cur.fetchone()
+                print(user)
+                logger.debug(f"Database query result: {user is not None}")
+                
+                if not user:
+                    logger.error(f"No user found for ID: {session.get('user_id')}")
+                    return f"""
+                        <h1>User Not Found</h1>
+                        <p>Session ID: {session.get('user_id')}</p>
+                        <p>Session Data: {dict(session)}</p>
+                        <a href="/login">Back to Login</a>
+                    """, 404
+
+                # Process profile picture
+                try:
+                    profile_pic = base64.b64encode(user[6]).decode('utf-8') if user[6] else None
+                except Exception as pic_error:
+                    logger.error(f"Profile picture processing error: {str(pic_error)}")
+                    profile_pic = None
+
+                try:
+                    logger.debug("Attempting to render patient dashboard")
+                    return render_template('patient_dashboard.html', 
+                                        user=user, 
+                                        profile_pic=profile_pic)
+                except Exception as template_error:
+                    logger.error(f"Template rendering error: {str(template_error)}")
+                    return f"""
+                        <h1>Error Loading Patient Dashboard</h1>
+                        <p>Error Type: {type(template_error).__name__}</p>
+                        <p>Error Details: {str(template_error)}</p>
+                        <p>User Data: {user}</p>
+                        <p>Template Path: {app.template_folder}/patient_dashboard.html</p>
+                        <a href="/login">Back to Login</a>
+                    """, 500
+
+        except psycopg2.Error as db_error:
+            logger.error(f"Database error: {str(db_error)}")
+            return f"""
+                <h1>Database Error</h1>
+                <p>Error Type: {type(db_error).__name__}</p>
+                <p>Error Details: {str(db_error)}</p>
+                <p>Session Data: {dict(session)}</p>
+                <a href="/login">Back to Login</a>
+            """, 500
+            
+        finally:
+            release_db_connection(conn)
+
+    except Exception as e:
+        logger.error(f"Unexpected dashboard error: {str(e)}")
+        logger.error("Full traceback:", exc_info=True)
+        return f"""
+            <h1>Unexpected Error</h1>
+            <p>Error Type: {type(e).__name__}</p>
+            <p>Error Details: {str(e)}</p>
+            <p>Session Data: {dict(session)}</p>
+            <a href="/login">Back to Login</a>
+        """, 500
+
+# Add this debug endpoint
+@app.route('/check-templates')
+def check_templates():
+    try:
+        templates = os.listdir(app.template_folder)
+        return jsonify({
+            'template_folder': app.template_folder,
+            'templates_found': templates,
+            'critical_templates': {
+                'admin_dashboard.html': 'admin_dashboard.html' in templates,
+                'patient_dashboard.html': 'patient_dashboard.html' in templates,
+                'doctor_dashboard.html': 'doctor_dashboard.html' in templates
+            }
+        })
+    except Exception as e:
+        logger.error(f"Unexpected error in dashboard: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error traceback:", exc_info=True)
+        return jsonify({
+            'error': str(e),
+            'template_folder': app.template_folder
+        }), 500
 
 
 @app.route('/change_password', methods=['POST'])
@@ -458,7 +656,7 @@ def get_appointments():
             appointment_list = []
             for appointment in appointments:
                 appointment_dict = {
-                    "id": appointment[0],   
+                    "id": appointment[0],
                     "patient_name": appointment[1],
                     "time_slot": appointment[2].strftime('%H:%M:%S'),
                     "Date": appointment[3]
@@ -622,10 +820,8 @@ def doctor_apply():
             file.save(file_path)
 
             # Process the resume
-            job_description = f"Doctor specializing in {
-                specialization} with {experience} years of experience"
-            similarity_score, top_words, missing_words = review_resume(
-                file_path, job_description)
+            job_description = f"Doctor specializing in {specialization} with {experience} years of experience"
+            similarity_score, top_words, missing_words = review_resume(file_path, job_description)
 
             # Convert similarity_score to a standard Python float
             similarity_score = float(similarity_score)
@@ -703,7 +899,7 @@ def hr_review():
                     resume_path, job_description)
 
                 return render_template('hr_review.html', applications=applications, selected_application=selected_application, similarity_score=similarity_score, top_words=top_words, missing_words=missing_words, doctors=doctors, patients=patients)
-        print(patients,doctors,applications)
+        print(patients, doctors, applications)
         return render_template('hr_review.html', patients=patients, doctors=doctors, applications=applications)
     except psycopg2.Error as e:
         print(f"Database error: {e}")
@@ -749,9 +945,14 @@ def approve_application(app_id):
         release_db_connection(conn)
     return redirect(url_for('hr_review'))
 
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
+
+def not_found(e):
+    return jsonify({"error": "Route not found"}), 404
+
 
 @app.route('/hr/reject/<int:app_id>', methods=['POST'])
 def reject_application(app_id):
@@ -811,12 +1012,11 @@ def doctor_dashboard():
         release_db_connection(conn)
 
 
-
 @app.route('/send_message', methods=['POST'])
 def send_message():
     user_id = session.get('user_id')
     user_type = session.get('user_type')
-    partner_id = request.json['partner_id']  
+    partner_id = request.json['partner_id']
     message = request.json['message']
     print(f"User ID: {user_id}, User Type: {user_type}")  # Debug print
 
@@ -851,7 +1051,7 @@ def send_message():
                 INSERT INTO messages (chat_room_id, sender_type, sender_id, message, created_at, is_read)
                 VALUES (%s, %s, %s, %s, NOW(), FALSE)
             """, (chat_room_id, user_type, user_id, message))
-            print("Hello : ",user_type)
+            print("Hello : ", user_type)
             conn.commit()
             return jsonify({'message': 'Message sent successfully', 'chat_room_id': chat_room_id}), 200
     except Exception as e:
@@ -919,18 +1119,20 @@ def bad_request(e):
 
 @app.route('/admin/remove_doctor/<int:doctor_id>', methods=['POST'])
 def remove_doctor(doctor_id):
-    print("My acess : ",session.get('is_admin'))
+    print("My acess : ", session.get('is_admin'))
     if not session.get('is_admin'):
         flash('Access denied. Admins only.', 'error')
         return redirect(url_for('login'))
-    print("My acess : ",session.get('is_admin'),doctor_id)
+    print("My acess : ", session.get('is_admin'), doctor_id)
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM appointments WHERE doctor_id = %s", (doctor_id,))
+            cur.execute(
+                "DELETE FROM appointments WHERE doctor_id = %s", (doctor_id,))
         conn.commit()
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM chat_rooms WHERE doctor_id = %s", (doctor_id,))
+            cur.execute(
+                "DELETE FROM chat_rooms WHERE doctor_id = %s", (doctor_id,))
         conn.commit()
         with conn.cursor() as cur:
             cur.execute("DELETE FROM doctors WHERE id = %s", (doctor_id,))
@@ -942,7 +1144,7 @@ def remove_doctor(doctor_id):
         flash('Error removing doctor.', 'error')
     finally:
         release_db_connection(conn)
-    print("My acess : ",session.get('is_admin'),doctor_id)
+    print("My acess : ", session.get('is_admin'), doctor_id)
     return redirect(url_for('hr_review'))
 
 
@@ -966,12 +1168,14 @@ def remove_patient(patient_id):
 
         with conn.cursor() as cur:
             # Step 2: Delete chat rooms associated with the patient
-            cur.execute("DELETE FROM chat_rooms WHERE patient_id = %s", (patient_id,))
+            cur.execute(
+                "DELETE FROM chat_rooms WHERE patient_id = %s", (patient_id,))
         conn.commit()
 
         with conn.cursor() as cur:
             # Step 3: Delete appointments associated with the patient
-            cur.execute("DELETE FROM appointments WHERE patient_id = %s", (patient_id,))
+            cur.execute(
+                "DELETE FROM appointments WHERE patient_id = %s", (patient_id,))
         conn.commit()
 
         with conn.cursor() as cur:
@@ -1147,6 +1351,7 @@ def reject_appointment(appointment_id):
     finally:
         release_db_connection(conn)
 
+
 @app.route('/get_chat_partners', methods=['GET'])
 def get_chat_partners():
     user_id = session.get('user_id')
@@ -1155,15 +1360,17 @@ def get_chat_partners():
     try:
         with conn.cursor() as cur:
             # Fetch all doctors and patients
-            if(user_type == 'doctor'):
+            if (user_type == 'doctor'):
                 cur.execute("SELECT id, name FROM patients")
                 patients = cur.fetchall()
-                partners = [{'id': pat[0], 'name': pat[1], 'type': 'patient'} for pat in patients]
+                partners = [{'id': pat[0], 'name': pat[1],
+                             'type': 'patient'} for pat in patients]
             else:
                 cur.execute("SELECT id, name FROM doctors")
                 doctors = cur.fetchall()
-                partners = [{'id': doc[0], 'name': doc[1], 'type': 'doctor'} for doc in doctors]
-                
+                partners = [{'id': doc[0], 'name': doc[1],
+                             'type': 'doctor'} for doc in doctors]
+
             cur.execute("""
                 SELECT id, doctor_id, patient_id FROM chat_rooms
             """)
@@ -1226,7 +1433,7 @@ def get_room_status():
 
             if room:
                 # Assuming you have a way to determine the floor and directions
-                floor = "2nd Floor" 
+                floor = "2nd Floor"
                 directions = "Take the elevator to the 2nd floor, turn left."
                 return jsonify({
                     "room_assigned": True,
@@ -1242,16 +1449,19 @@ def get_room_status():
     finally:
         release_db_connection(conn)
 
+
 @app.route('/get_remaining_patients', methods=['GET'])
 def get_remaining_patients():
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name FROM patients WHERE id NOT IN (SELECT patient_id FROM beds WHERE status = 'occupied')")
+            cur.execute(
+                "SELECT id, name FROM patients WHERE id NOT IN (SELECT patient_id FROM beds WHERE status = 'occupied')")
             remaining_patients = cur.fetchall()
             return jsonify(remaining_patients), 200
     finally:
         release_db_connection(conn)
+
 
 @app.route('/assign_room', methods=['POST'])
 def assign_room():
@@ -1282,6 +1492,7 @@ def assign_room():
     finally:
         release_db_connection(conn)
 
+
 @app.route('/get_bills', methods=['GET'])
 def get_bills():
     if 'user_id' not in session:
@@ -1305,6 +1516,7 @@ def get_bills():
         return jsonify({"message": "Error fetching bills"}), 500
     finally:
         release_db_connection(conn)
+
 
 @app.route('/make_payment', methods=['POST'])
 def make_payment():
@@ -1337,6 +1549,7 @@ def make_payment():
         return jsonify({"message": "Error processing payment"}), 500
     finally:
         release_db_connection(conn)
+
 
 @app.route('/send_bill/<int:user_id>/<string:user_type>', methods=['POST'])
 def send_bill(user_id, user_type):
@@ -1383,6 +1596,17 @@ def get_rooms_and_beds():
         return jsonify({"message": "Error fetching room and bed data"}), 500
     finally:
         release_db_connection(conn)
+
+
+@app.route('/debug-session')
+def debug_session():
+    if app.debug:
+        return jsonify({
+            'session': dict(session),
+            'session_type': app.config['SESSION_TYPE'],
+            'redis_connected': app.config['SESSION_REDIS'].ping() if app.config['SESSION_TYPE'] == 'redis' else False
+        })
+    return 'Debugging disabled'
 
 
 if __name__ == '__main__':

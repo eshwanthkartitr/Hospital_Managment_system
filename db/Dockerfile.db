@@ -1,0 +1,10 @@
+FROM postgres:13
+
+# Copy initialization scripts
+COPY ./init-scripts/ /docker-entrypoint-initdb.d/
+COPY ./complete_backup_utf8.sql /docker-entrypoint-initdb.d/
+
+# Add custom configuration
+COPY postgresql.conf /etc/postgresql/postgresql.conf
+
+CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"] 

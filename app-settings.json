@@ -1,0 +1,20 @@
+# Create app-settings.json
+@'
+{
+    "WEBSITES_PORT": "8000",
+    "POSTGRES_DB": "ehms",
+    "POSTGRES_USER": "postgres",
+    "POSTGRES_PASSWORD": "Tr@310305",
+    "POSTGRES_HOST": "ehms-db2.postgres.database.azure.com",
+    "DATABASE_URL": "postgresql://postgres:Tr@310305@ehms-db2.postgres.database.azure.com:5432/ehms?sslmode=require",
+    "REDIS_URL": "redis://ehms-redis2.redis.cache.windows.net:6380?ssl=True&password=U2Psxdrd46uj4GfoTBSCFwwE3tVk6lHTjAzCaDSghXY=",
+    "SESSION_TYPE": "redis",
+    "SESSION_PERMANENT": "false",
+    "SESSION_USE_SIGNER": "true",
+    "DOCKER_REGISTRY_SERVER_URL": "https://ehmsregistry2.azurecr.io",
+    "DOCKER_REGISTRY_SERVER_USERNAME": "ehmsregistry2",
+    "WEBSITES_ENABLE_APP_SERVICE_STORAGE": "true",
+    "WEBSITES_CONTAINER_START_TIME_LIMIT": "1800",
+    "DOCKER_ENABLE_CI": "true"
+}
+'@ | Out-File -FilePath app-settings.json -Encoding UTF8
