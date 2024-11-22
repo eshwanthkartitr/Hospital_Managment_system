@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(response => response.json())
             .then(availableSlots => {
-                slotsContainer.innerHTML = ''; // Clear previous slots
+                slotsContainer.innerHTML = ''; 
 
                 const allSlots = [
                     "08:00", "09:00", "10:00", "11:00", "12:00",
@@ -335,6 +335,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function selectSlot(slot) {
+        alert("You have choosen a slot");
         console.log(slot);
         if (selectedSlot) {
             selectedSlot.classList.remove('selected');

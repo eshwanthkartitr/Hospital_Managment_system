@@ -194,6 +194,7 @@ def login():
                 # Check for admin
                 cur.execute("SELECT name, password FROM admins")
                 admins = cur.fetchall()
+                print("admins : ", admins[0])
                 for admin in admins:
                     if patient_name == admin[0] and password == admin[1]:
                         session.clear()
@@ -204,10 +205,8 @@ def login():
                 # Check for patient
                 cur.execute("SELECT * FROM patients WHERE name = %s", (patient_name,))
                 user = cur.fetchone()
-                print(user)
                 
                 if user and check_password_hash(user[4], password):
-                    session.clear()
                     session['user_id'] = user[0]
                     session['name'] = user[1]
                     session['user_type'] = 'patient'
@@ -244,7 +243,7 @@ def doctor_login():
                 doctor = cur.fetchone()
 
                 if doctor:
-                    if doctor[4] == password:  # Assuming password is at index 4
+                    if doctor[4] == password:  
                         session['user_id'] = doctor[0]
                         session['user_type'] = 'doctor'
                         session['name'] = doctor[1]
@@ -282,21 +281,21 @@ def dashboard():
             return redirect(url_for('login'))
 
         # Admin dashboard
-        if session.get('is_admin'):
-            logger.debug("Attempting to render admin dashboard")
-            try:
-                print("should work")
-                return render_template('patient_dashboard.html')
-            except Exception as e:
-                logger.error(f"Admin template error: {str(e)}")
-                return f"""
-                    <h1>Error Loading Admin Dashboard</h1>
-                    <p>Error Type: {type(e).__name__}</p>
-                    <p>Error Details: {str(e)}</p>
-                    <p>Session Data: {dict(session)}</p>
-                    <p>Template Path: {app.template_folder}/patient_dashboard.html</p>
-                    <a href="/login">Back to Login</a>
-                """, 500
+        # if session.get('is_admin'):
+        #     logger.debug("Attempting to render admin dashboard")
+        #     try:
+        #         print("should work")
+        #         return render_template('patient_dashboard.html')
+        #     except Exception as e:
+        #         logger.error(f"Admin template error: {str(e)}")
+        #         return f"""
+        #             <h1>Error Loading Admin Dashboard</h1>
+        #             <p>Error Type: {type(e).__name__}</p>
+        #             <p>Error Details: {str(e)}</p>
+        #             <p>Session Data: {dict(session)}</p>
+        #             <p>Template Path: {app.template_folder}/patient_dashboard.html</p>
+        #             <a href="/login">Back to Login</a>
+        #         """, 500
 
         # Doctor dashboard
         if session.get('user_type') == 'doctor':
@@ -874,6 +873,7 @@ def application_tracker():
 @app.route('/hr/review', methods=['GET', 'POST'])
 def hr_review():
     conn = get_db_connection()
+    print("My acess : ", session.get('is_admin'))
     if not session.get('is_admin'):
         return redirect(url_for('dashboard'))
     try:
@@ -1294,8 +1294,8 @@ def available_doctors():
 
 
 def send_otp(phone_number, otp):
-    account_sid = 'ACb76585657c40f7b84565e2ab6ae18d29'
-    auth_token = '9fdde09dce41cc8137460abefb63aa4e'
+    account_sid = 'Twillio_sid'
+    auth_token = 'Twillio_Auth'
     client = Client(account_sid, auth_token)
 
     message = client.messages.create(
