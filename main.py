@@ -34,7 +34,7 @@ def init_redis():
         redis_client = redis.StrictRedis(
             host="ehms-redis3.redis.cache.windows.net",
             port=6380,
-            password="4V3i2If2NiavGbYHt5JpvAi7n0bLfSQIpAzCaDrCVoM=",
+            password=$redis_password,
             ssl=True,
             ssl_cert_reqs=None,
             decode_responses=False,  # Changed this to False  # Remove automatic encoding

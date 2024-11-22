@@ -74,12 +74,12 @@ services:
       # Redis Configuration (updated)
       - REDIS_HOST=ehms-redis3.redis.cache.windows.net
       - REDIS_PORT=6380
-      - REDIS_PASSWORD=4V3i2If2NiavGbYHt5JpvAi7n0bLfSQIpAzCaDrCVoM=  # Will be set from the key we got above
+      - REDIS_PASSWORD=$redis_password  # Will be set from the key we got above
       - REDIS_SSL=True
       # PostgreSQL Configuration
       - POSTGRES_DB=ehms
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=Tr@310305
+      - POSTGRES_PASSWORD=$postgres_password
       - POSTGRES_HOST=ehms-db2.postgres.database.azure.com
       - POSTGRES_PORT=5432
     command: gunicorn --bind 0.0.0.0:8000 main:app --reload --timeout 120
