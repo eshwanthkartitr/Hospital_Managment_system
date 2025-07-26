@@ -106,7 +106,7 @@ python main.py
 ```
 
 ## 📧 Contact
-For support or queries, please contact [eshwanthkartik@gmail.com]
+For support or queries, please contact [eshwanthkartitr@gmail.com]
 
 ## 📝 License
 This project is licensed under the MIT License - see the LICENSE file for details.
